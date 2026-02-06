@@ -1,0 +1,3263 @@
+{
+  "timestamp": "2026-01-31T03:57:21.477Z",
+  "dryRun": false,
+  "collections": [
+    "episodes",
+    "subtitles",
+    "words",
+    "meanings"
+  ],
+  "errors": [
+    {
+      "collection": "episodes",
+      "errors": [
+        {
+          "item": "episode:Frieren: Beyond Journey's End/81726716",
+          "error": "Episode not found in Firebase"
+        }
+      ]
+    },
+    {
+      "collection": "subtitles",
+      "errors": []
+    },
+    {
+      "collection": "words",
+      "errors": [
+        {
+          "item": "word:ราตรีสวัสดิ์",
+          "error": "Failed to save word: value \"95030311922187069022\" is out of range for type bigint"
+        },
+        {
+          "item": "word:ศักดิ์สิทธิ์",
+          "error": "Failed to save word: value \"95155993095323944215\" is out of range for type bigint"
+        },
+        {
+          "item": "word:สัตว์ประหลาด",
+          "error": "Failed to save word: value \"95207355663101247025\" is out of range for type bigint"
+        },
+        {
+          "item": "word:เจ้าตื่นเต้น",
+          "error": "Failed to save word: value \"95734120149904682729\" is out of range for type bigint"
+        }
+      ]
+    },
+    {
+      "collection": "meanings",
+      "errors": [
+        {
+          "item": "meaning:sense_1767860936107_u3d3rrsgu",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860479281_ja3ujfqvz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860974271_yv599wpp7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860758117_njpzjz7zf",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766639236052357\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861021155_ue8wgr9b5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766639254798584\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767854406944_lsjanree0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407033_ez86ymgc3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407131_hfht7a4zt",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407223_m3bda7h7g",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407311_tsjpjhezp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407413_bk6617by9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407508_u0kh997si",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854407596_1i8terdiu",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766639622305165\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860948917_6fgzwniwi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861748087_fgnw5off9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ก็ได้-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859901417_wcuaq44bm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859901542_4yanp80fm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859901662_nqpe2h2h5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859901775_hee2jtial",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860187123_feywjzcsw",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861418946_4wq52iccm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ขอบใจ-0",
+          "error": "Failed to save meaning: value \"93240766640328412408\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859874093_tyvintg9r",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860917074_4qbemafpl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861346303_29t0nheoz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860776352_s7jhgd1uo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859673932_t77d46wqq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861833552_30zdtouxz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ข้าเหรอ-0",
+          "error": "Failed to save meaning: value \"89604376742147313959140\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860216263_em7x9wuj3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766641838547028\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463765899827671576\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767854662000_e05tqxsjq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854662088_82sosljsp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854662173_7zgh236q5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854662272_twvr6dum1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854662363_5ysjwg3ee",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854662486_dxfbhchxo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463765909546197306\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861953283_df09b960l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860205970_o3r100om9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859818219_d1mqo5vr1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859818334_n3n3qp6yl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859818435_58h3dssth",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860630031_wq34vlkls",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766642903437855\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767855077080_kqajknv6z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376745881009805423\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861582689_hl6acm3zk",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860400172_kfhb2cle9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861054988_t91qt4omx",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861005003_dp1haza8t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2669403987654337865999413875\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-จากที่-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-จำเลวร้าย-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-จิตใจ-0",
+          "error": "Failed to save meaning: value \"93240766645849220946\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861047120_gb23ynn03",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861627319_bwrc2f28h",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860921014_k5meore6z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861863063_pb8yyuvti",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854410006_xkm87b3m3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859651273_b82eqo35z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859651474_g405wjxkd",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861151053_63ggguxxg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855400961_3jj7p8c27",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401056_055g5q8zl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401140_inv5tg6d5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401239_7d7v6623a",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401346_86a35sbkz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401448_lxc9sht7t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401551_llan0hhcz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401642_ob92ui919",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401751_ptz8rz06e",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401852_hn9n5fujc",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855401947_ze0pzl4yn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855402041_5n27nyu75",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ชามะลิ-0",
+          "error": "Failed to save meaning: value \"2890463766074906387944\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-ชาสงบ-0",
+          "error": "Failed to save meaning: value \"93240766647584593785\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860100027_04cbfs8jn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860176164_gxfkjkd8e",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861647353_q550vlp5e",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859870051_d5xjff38x",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861425385_fzaex93w1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861425526_wezmcwviv",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861425658_hpltzrt2f",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861425842_53rmvtkk2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861425957_l8zxc329y",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861426093_6hqzi3t6a",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861426216_3wabnzyd0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ตรงธาร-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861800376_v6gg5xegh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859574163_2dpmwh9u0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859574322_siaxokmqt",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766376844385809\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376757710741581246\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861536267_e4x12m0a7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859659084_8pt0wox04",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859659206_66ktf5vd7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859659334_1phwmf6uz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859659440_1yxh5de9n",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859659560_yql2fenoi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859660184_4ndq771hq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854559199_bmyt794p5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:10",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ตาแก่-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861942106_8viqpo6o4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861399312_jn0zjhc1l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855367061_qz9luybqn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855367153_jrpvj4c7i",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855367263_1h5pryw6l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855367387_450mp8mco",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767931240867_zkrngntp7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860813438_mqvlv5kbu",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860813552_bir02dp8z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860813689_lah4747gr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860813800_lpzmw39o4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860813926_7v619aijh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814050_ojqpfz7kt",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814180_8sf1i2myr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814295_et9sj00x1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814407_edycq3g3m",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814521_095moswal",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814654_8qnsip9ub",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814780_w3adjwy05",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814886_99d3ojc4s",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860814995_4mgesi4au",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815154_2ad1enyxa",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815291_1ojabtlrn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815393_a1jdomw8d",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815524_4gvuuejho",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815635_upuv5mc68",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815758_y5stevweo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815883_iycekhyar",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860815996_s9zs1mrb8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816103_p7f1b2zjr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816216_we9x11aun",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816321_f9vjkd2we",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816444_23bpx3284",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816550_vwj8apcwl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860816660_boqz1uvop",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766397408848834\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-ต่อไป-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376758346135939880\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860089216_ktb004c20",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860788104_qrp2wohkk",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861614368_4xjmrewv3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:10",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860130071_6jl774uyk",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860017108_vpwpk0dyo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859606381_jkrvt3r9r",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ทัพเรือเผ่า-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861715114_yth7m3rk7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ทั้งหมด-0",
+          "error": "Failed to save meaning: value \"89604376759416503646186\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767854665039_j0si3ujv8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ทำงาน-0",
+          "error": "Failed to save meaning: value \"93240766659119727606\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766659174976457\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766436344413470\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859993014_av4ggbt8g",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860799066_3tq3sgyfq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ท่าพื้นฐาน-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766446813327401\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861428977_benr61upi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861429085_7c9nrpu4o",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860050685_vpmg8xf2k",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860670286_smkhksru5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860178967_nu4qevgw3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861543031_9z4xpxsy1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861180866_3lt49an8q",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861957188_h7jpzsp8a",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860067997_xrrb1l0pn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861077329_wwgsleqac",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861077460_150u2da6t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861077574_5gi3a43ky",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861077693_34258j7cs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861077811_dcfupmq0l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860595403_bhbtvay04",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376762421729221128\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860862167_f8ahbxa8z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861018090_rdgcogl6x",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861921326_el3umdco9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861044069_56d5wvft7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ปวดฉี่-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861311283_uvut3h66w",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859446133_gcrxd2eti",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859446249_ogxeo85ft",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859905315_dkn1iwr1u",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859905463_ohqpr5g46",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861909360_a3j3vuksb",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860122214_3dhu3r6ze",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860880708_50cncxjn9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861081113_ruxr54rdb",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860666329_n3zat52lr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ผู้ปกป้อง-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376763902063243621\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767855118497_zx3419r3k",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860297823_6dc5lqi52",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860660404_ncz8ue88a",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ฝีมือ-0",
+          "error": "Failed to save meaning: value \"93240766664526187715\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-ฝีมือ-1",
+          "error": "Failed to save meaning: value \"93240766664526187716\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860796231_hmr5afse8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860106028_xpudmm37x",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860134681_tmqk0e5jl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860822339_wqko3a90b",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860749479_xs6z1kyg2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860012128_jhp1xsmpd",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860059465_ke6a252kd",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861969918_zsjefyi3w",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861970041_8770ar8je",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861970193_2vjecgofs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-พัฒโน-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860392072_chjdnlamu",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-พิลึก-0",
+          "error": "Failed to save meaning: value \"93240766665388684254\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860686107_l7h8sl3jn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861068080_pc31ybami",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860845896_c14e2adu4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860085801_5all0h1fp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861445419_skzs4gafp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861976053_5vf2mtg4z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766667330270395\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767854582813_3iwjq54ds",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854582923_2atmwox45",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-มหาศาล-0",
+          "error": "Failed to save meaning: value \"2890463766701963666997\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-มหาศาล-1",
+          "error": "Failed to save meaning: value \"2890463766701963666998\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766701963751565\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860363152_1kuc3yw0t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855405173_ic9h56k4u",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855405260_b1hvezxcs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859953756_2x0fucz3i",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-มุ่งหน้า-0",
+          "error": "Failed to save meaning: value \"2777735679812250556926191\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859892173_jogjgd4cj",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860528168_mobvaofbq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766668819249561\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859469943_50brqx5b8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859470120_1019sa2id",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859470254_e06aducv6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859470575_pu0md9kd2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ยินดี-0",
+          "error": "Failed to save meaning: value \"93240766668926653804\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860031652_d38anu9cs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861706378_x78i0g4be",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ย้อนกลับ-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861188107_zhq52wocp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860338057_6k8anpwoz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860483062_80cqkmxqn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766669713389908\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376769598001779832\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859678069_hk49z9cux",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766669706728256\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767854668011_6wcth67tw",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668297_3jaymtnkz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668387_0jn8ohqkg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668499_fhvvpqniu",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668607_k6pixd86i",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668700_u6zdml3tm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668799_9tq22rh3c",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854668901_18vfmnk6d",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854669012_fdur0kqr4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854669119_2sdv1u3yp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854669226_ik8cusz7r",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854594953_09isx9m9c",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861119300_g8vcv0o90",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860286000_phzxg87h8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860286111_ztm92r3vm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860286230_ms9jn3bbc",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766767118985536\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766770042800167\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766770074348836\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860489978_nkonk02bv",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859654419_634gd4u5w",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859654522_ttqqbdwo7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859654628_44cb8dpt4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861507377_6qumsnc7m",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861670898_stvli01xj",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766671598087732\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860718373_6fkso5cmj",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861454473_z1f8dv7hz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861029713_8pgnsvrsa",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861248257_q5y01dhrv",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859551329_axuh7mdpi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860700117_upsqdx6r7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859584972_0ujz3nedj",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859585157_8rivp9ce0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859585608_hr5ukeo4c",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860913303_xn4cddrvg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860462276_cee0jxzte",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860768432_5dkmdksdh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860150059_zxu1brw6j",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861572172_13vp1n1a2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854814187_252qfrwm9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854814279_vkiunqnij",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ศิลปะอัน-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861540571_x6fo50dd0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854586044_0z230pphh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463766916305499085\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-สงบสุข-0",
+          "error": "Failed to save meaning: value \"2890463766916941954009\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-สงบสุข-1",
+          "error": "Failed to save meaning: value \"2890463766916941954010\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-สงบสุข-2",
+          "error": "Failed to save meaning: value \"2890463766916941954011\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860219931_vxz8d0p2p",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860697201_6jr9cpyiv",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861208114_4a120419f",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766675479168878\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861661221_npv21m9ng",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-สวรรค์-0",
+          "error": "Failed to save meaning: value \"2890463766945591791495\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860289000_2riejmntf",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860289115_siuxredav",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860289234_wdmwk871x",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860644183_a12cggwva",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860536997_csucjecgh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859603117_qxiv48glz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859888012_az2x6a78o",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860572978_ul5148px0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859533872_v3g0pf1wr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860966940_akxvgt9hh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861183948_ml2xfsj0d",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860139035_emn6js91h",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854193068_ktovc2m8l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854193169_lcsaegn37",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860524572_fbr9cde3v",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860870036_94a3aipcf",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860389076_i8jdpd4jk",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376775789295578012\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861001342_6r65oiw24",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859523442_w01w93ytl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766676169486891\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766676185331859\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860981467_dy6x2k285",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:10",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:11",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860322802_vntuwd1id",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861008094_7nniihwz2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855331131_g7ugp0xs7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855331235_de2g1jcdo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-หรือไม่-0",
+          "error": "Failed to save meaning: value \"89604376776074283776929\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860173279_lat5v8r5m",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861674509_o8nxiqbr7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861678059_ihcivh7a3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860403125_d9o5newgx",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860534156_zrcsh9ygs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859957201_1r4myc3cl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854877370_9teo7nl1s",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860740078_2uaqs6r8t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861276490_k276wwd3c",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861276611_f5je2saoj",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861276721_m43qzjm4w",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859548061_4pcxlff44",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859548181_4tj6fazu6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861106195_vejxe670v",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860834050_9ymynkns7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861810894_tv5q2dj93",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2777735680110408059471144\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860657289_1nfg8obk3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766678218124588\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766678314197680\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766678583436245\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861558082_921k28yq1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861558199_e1shmu2v9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861558328_af9wxj6il",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861558453_2r0rzi8wq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861558566_uhktpd8gb",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861558677_h3h6knm6j",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767036757573513\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859596294_7y6ozdkry",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861481046_ha14222np",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376778164511977889\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860885051_ztq1yyc3h",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860437067_iczcbuj6g",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-0",
+          "error": "Failed to save meaning: value \"93240766678661415629\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-1",
+          "error": "Failed to save meaning: value \"93240766678661415630\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-2",
+          "error": "Failed to save meaning: value \"93240766678661415631\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-3",
+          "error": "Failed to save meaning: value \"93240766678661415632\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-4",
+          "error": "Failed to save meaning: value \"93240766678661415633\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-5",
+          "error": "Failed to save meaning: value \"93240766678661415634\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-อำนาจ-6",
+          "error": "Failed to save meaning: value \"93240766678661415635\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860466029_cqm7oo6it",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859921138_4mv1gwgqg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859960012_craspcig4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861879421_leui842x6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861879547_atngpstr6",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861879662_yxa3pkmp7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เกี่ยวกับ-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694120101991\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861285284_wo8kngitt",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861565356_f4egxxrir",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861565534_skv55x6n8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เก่าแก่-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860487264_4eo8y5pig",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เจ้าคง-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861259131_1ojbx25xh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เจ้าตื่นเต้น-0",
+          "error": "Failed to save meaning: value \"2565297233475085664647106942539\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เจ้าพูด-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เจ้าลองคิด-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เจ้าสอน-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เจ้าเปลี่ยน-0",
+          "error": "Failed to save meaning: value \"82751523660486670217163083751\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860548102_0tcvbjst0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694326217271\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860837788_5jkojzf0t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694378586966\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376793569030142999\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861342210_k8fwbuohi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767534559855729\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861196184_llkks767w",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861109995_jm8odpw09",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855370050_p332a0497",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859815002_s15uq0gor",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859815110_gms9iqf4h",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859815238_lgg2yrek5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859815350_n0vkkiupc",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2777735680603771109145483\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เบื่อ-0",
+          "error": "Failed to save meaning: value \"93240766694836653382\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เบื่อ-1",
+          "error": "Failed to save meaning: value \"93240766694836653383\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เบื่อ-2",
+          "error": "Failed to save meaning: value \"93240766694836653384\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เบื่อ-3",
+          "error": "Failed to save meaning: value \"93240766694836653385\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376793749152295960\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859453092_wxfxth4cf",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859453253_8m5wbokb2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859453370_2nkhh56wm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859453470_874pbspg0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694862261149\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860952199_7yqb3ouh0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860977138_hd8xsp489",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เผ่าพี่น้อง-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"86109806098849120183490255\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860146680_f3if2fq4p",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859719136_fi659f2c8",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694948154368\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767543433032043\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766694951169986\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859467125_936fw3d3l",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766695037057439\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766695091533646\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"93240766695091294357\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859612998_m4mt8szqm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"86109806099020302496050638\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859981589_ulr0xlpdg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"89604376793999800840666\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859699959_lskku6q3p",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861622927_96ukxxy1u",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861623047_93dvf91f9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861623159_c1z5xgrx2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861623281_cg6izqbmh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860605174_y5flyh8b0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860703073_m4v0caw5z",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861416220_wzl9qq8wl",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861262080_575nu8d9v",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860459077_m1jp5g5g1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861823284_3lr3522jp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855115464_jnue30q7u",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855115561_58vt35k4k",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767855115662_t0pqwe8wd",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-เสื้อผ้า-0",
+          "error": "Failed to save meaning: value \"2777735680619529290214742\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767861372205_ldpysc8nm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860003941_4yhe0aepd",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767554381701199\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เหม็น-0",
+          "error": "Failed to save meaning: value \"93240766695302982476\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เหม็น-1",
+          "error": "Failed to save meaning: value \"93240766695302982477\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-เหม็น-2",
+          "error": "Failed to save meaning: value \"93240766695302982478\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767554408150802\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860706582_o1of3hubq",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860858891_8cg4jzkce",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859684257_mlz6jwqbx",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861568187_kalb9zgpi",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861568317_m7mu9s5ip",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861568431_ydkcfazvg",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861568555_5kdv6cjaz",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860772438_pzbwr7l0h",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860333155_mtgyfoawc",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859563396_cfxk3xsrn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860442405_q30679ygx",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859964061_865ez2hz4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"2890463767567008080311\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767859437126_f8dgptbxy",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860078067_3soo3sbwh",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860078178_zn3mqrks4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861718072_ngtxbdwxv",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861694071_84s9fesli",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859644829_ebhd6kii9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859644956_h531z6tcs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860410077_q5tylsnc7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-แหล่ง-0",
+          "error": "Failed to save meaning: value \"93240766696194192734\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860272061_pnsvdi2oo",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861972931_vrq7pme5v",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854817159_t97wsupf9",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767854817249_w1kf0kntf",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861939278_ihwuntcep",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859894964_xy6l4bo39",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:unknown",
+          "error": "Failed to save meaning: value \"86109806100841004336619245\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense-ใจเย็น-0",
+          "error": "Failed to save meaning: value \"2890463767606725799003\" is out of range for type bigint"
+        },
+        {
+          "item": "meaning:sense_1767860908375_gx5vw1tc7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861350168_w9mgl3h0t",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ในระหว่าง-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860035155_oamonaipa",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861273030_9qwwcp9oy",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861273151_9pt2cmetm",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861273272_d28g5p1av",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ไถลหิมะ-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860723046_srkflqvb5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860278090_95gpopfhr",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:5",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860569959_3appgugye",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861904362_7ob20u754",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861904555_du1n602vs",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense-ไวดี-0",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859627255_hjcb7qgss",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859627361_mjg143wlp",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859627501_cqmxio4f7",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859627607_oxe9rf6pn",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767859627719_an5p0x991",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767861737206_4fmzqcqwy",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:3",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:4",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:sense_1767860183267_18nm9hvyw",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:1",
+          "error": "Failed to convert meaning"
+        },
+        {
+          "item": "meaning:2",
+          "error": "Failed to convert meaning"
+        }
+      ]
+    }
+  ]
+}

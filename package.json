@@ -1,0 +1,44 @@
+{
+  "name": "smartersubs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "migrate": "tsx scripts/migrate-firebase-to-supabase.ts",
+    "migrate:dry-run": "tsx scripts/migrate-firebase-to-supabase.ts --dry-run",
+    "build:extension": "vite build --config extension/vite.config.ts",
+    "dev:extension": "vite build --config extension/vite.config.ts --watch"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.93.3",
+    "@tanstack/react-query": "^5.90.20",
+    "dotenv": "^17.2.3",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
+    "firebase": "^12.7.0",
+    "openai": "^6.9.1",
+    "postgres": "^3.4.8",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/chrome": "^0.0.268",
+    "@types/node": "^22.10.2",
+    "@types/puppeteer": "^7.0.4",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "esbuild": "^0.19.0",
+    "puppeteer": "^24.36.1",
+    "sharp": "^0.33.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2",
+    "vite": "^5.0.8"
+  }
+}
