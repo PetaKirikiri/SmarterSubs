@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { wordThSchema } from './wordThSchema';
 import { meaningThSchema } from './meaningThSchema';
+import { meaningThSchemaV2 } from './meaningThSchemaV2';
 
 /**
  * Completeness Validation Schemas
@@ -112,6 +113,60 @@ export const completeTokenThSchema = z.object({
     return true;
   },
   { message: "All meanings must be normalized if they exist" }
+);
+
+/**
+ * Complete Meaning Thai Schema V2
+ * 
+ * Extends meaningThSchemaV2 to require all V2 fields (pos_th, pos_eng, definition_eng)
+ * Base schema rules (id, definition_th required) are enforced first
+ * This completeness validation adds the requirement that meaning must have V2 fields populated
+ */
+export const completeMeaningThSchemaV2 = meaningThSchemaV2.refine(
+  (data) => {
+    return !!(
+      data.pos_th &&
+      data.pos_th.trim().length > 0 &&
+      data.pos_eng &&
+      data.pos_eng.trim().length > 0 &&
+      data.definition_eng &&
+      data.definition_eng.trim().length > 0
+    );
+  },
+  { 
+    message: "Meaning V2 must have pos_th, pos_eng, and definition_eng populated",
+    path: ['pos_th', 'pos_eng', 'definition_eng']
+  }
+);
+
+/**
+ * Complete Token Thai Schema V2
+ * 
+ * Extends completeTokenThSchema to require V2 meanings
+ * Token must have complete word data AND all meanings must be V2 complete (if meanings exist)
+ */
+export const completeTokenThSchemaV2 = z.object({
+  token: z.string().min(1),
+  word: completeWordThSchema, // Base wordThSchema validated first, then completeness validation
+  senses: z.array(completeMeaningThSchemaV2).optional(), // Base meaningThSchemaV2 validated first, then V2 completeness validation
+}).refine(
+  (data) => {
+    // If senses exist, all must be V2 complete
+    if (data.senses && data.senses.length > 0) {
+      return data.senses.every(s => {
+        return !!(
+          s.pos_th &&
+          s.pos_th.trim().length > 0 &&
+          s.pos_eng &&
+          s.pos_eng.trim().length > 0 &&
+          s.definition_eng &&
+          s.definition_eng.trim().length > 0
+        );
+      });
+    }
+    return true;
+  },
+  { message: "All meanings must be V2 complete if they exist" }
 );
 
 // Legacy exports for backward compatibility during migration

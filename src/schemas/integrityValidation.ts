@@ -3,12 +3,15 @@ import { subtitleThSchema, type SubtitleTh } from './subtitleThSchema';
 import { wordThSchema, type WordTh } from './wordThSchema';
 import { episodeSchema, type Episode } from './episodeSchema';
 import { meaningThSchema } from './meaningThSchema';
+import { meaningThSchemaV2, detectMeaningSchemaVersion } from './meaningThSchemaV2';
 import { interpretZodError, type ErrorResponse } from '../services/errorResponse';
 // ⚠️ SCHEMA ENFORCEMENT: Import completeness validation schemas and types from centralized location
 import {
   completeWordThSchema,
   normalizedMeaningThSchema,
   completeTokenThSchema,
+  completeMeaningThSchemaV2,
+  completeTokenThSchemaV2,
   type IntegrityError,
   type CompletenessValidationResult,
   // Legacy exports for backward compatibility
@@ -135,6 +138,18 @@ export function validateCompleteWord(word: unknown): CompletenessValidationResul
 }
 
 /**
+ * Strip V2 fields from a sense object for V1 validation
+ * This allows V1 validation to work even when V2 columns exist in the database
+ */
+function stripV2Fields(sense: unknown): unknown {
+  if (!sense || typeof sense !== 'object') {
+    return sense;
+  }
+  const { pos_th, pos_eng, definition_eng, ...v1Sense } = sense as Record<string, unknown>;
+  return v1Sense;
+}
+
+/**
  * Validate normalized meanings Thai completeness
  * 
  * ⚠️ CONVENIENCE WRAPPER: This is a wrapper around Zod's normalizedMeaningThSchema.safeParse()
@@ -143,6 +158,9 @@ export function validateCompleteWord(word: unknown): CompletenessValidationResul
  * You can use Zod directly: `normalizedMeaningThSchema.safeParse(meaning)`
  * 
  * Returns validation result with errors if any meanings are not normalized
+ * 
+ * ⚠️ V1/V2 COMPATIBILITY: Strips V2 fields before V1 validation to allow V1 completeness check
+ * even when V2 columns exist in the database. This enables the workflow: "V1 is good, upgrade to V2"
  */
 export function validateNormalizedSenses(senses: unknown[]): CompletenessValidationResult {
   // #region agent log
@@ -150,11 +168,14 @@ export function validateNormalizedSenses(senses: unknown[]): CompletenessValidat
   // #endregion
 
   // ⚠️ CRITICAL: Validate each sense with base schema first - senses must be unknown until validated
+  // ⚠️ V1/V2 COMPATIBILITY: Strip V2 fields before V1 validation to allow V1 completeness check
   const validatedSenses: z.infer<typeof meaningThSchema>[] = [];
   for (const sense of senses) {
-    const senseValidation = meaningThSchema.strict().safeParse(sense);
+    // Strip V2 fields before V1 validation (allows V1 validation even when V2 columns exist)
+    const v1Sense = stripV2Fields(sense);
+    const senseValidation = meaningThSchema.strict().safeParse(v1Sense);
     if (!senseValidation.success) {
-      const errors = analyzeValidationErrors(sense, senseValidation, 'sense');
+      const errors = analyzeValidationErrors(v1Sense, senseValidation, 'sense');
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense fails base meaningThSchema',data:{errorCount:errors.length,errors:errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
       // #endregion
@@ -219,6 +240,93 @@ export function validateNormalizedSenses(senses: unknown[]): CompletenessValidat
 }
 
 /**
+ * Validate V2 complete meanings Thai completeness
+ * 
+ * ⚠️ CONVENIENCE WRAPPER: This is a wrapper around Zod's completeMeaningThSchemaV2.safeParse()
+ * Formats Zod errors into UI-friendly CompletenessValidationResult format
+ * 
+ * Returns validation result with errors if any meanings are not V2 complete
+ */
+export function validateV2CompleteSenses(senses: unknown[]): CompletenessValidationResult {
+  if (!senses || senses.length === 0) {
+    return {
+      passed: true, // No senses is valid (senses are optional)
+      errors: [],
+    };
+  }
+
+  // ⚠️ CRITICAL: Validate each sense with V2 schema first
+  const validatedSenses: z.infer<typeof meaningThSchemaV2>[] = [];
+  for (const sense of senses) {
+    const senseValidation = meaningThSchemaV2.strict().safeParse(sense);
+    if (!senseValidation.success) {
+      const errors = analyzeValidationErrors(sense, senseValidation, 'sense');
+      return {
+        passed: false,
+        errors,
+      };
+    }
+    validatedSenses.push(senseValidation.data);
+  }
+
+  const errors: IntegrityError[] = [];
+  
+  validatedSenses.forEach((sense, idx: number) => {
+    if (!sense) {
+      errors.push({
+        field: `senses[${idx}]`,
+        message: `Sense at index ${idx} is null or undefined`,
+        present: false,
+        expected: 'V2 complete sense object with pos_th, pos_eng, definition_eng',
+      });
+      return;
+    }
+
+    // ⚠️ SCHEMA ENFORCEMENT: Use V2 completeness validation schema
+    const validation = completeMeaningThSchemaV2.safeParse(sense);
+    if (!validation.success) {
+      const senseErrors = analyzeValidationErrors(sense, validation, `senses[${idx}]`);
+      errors.push(...senseErrors);
+    }
+  });
+
+  return {
+    passed: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Detect if meanings need V2 enrichment
+ * Returns true if meanings are normalized (V1) but missing V2 fields
+ */
+export function needsV2Enrichment(senses: unknown[]): boolean {
+  if (!senses || senses.length === 0) {
+    return false;
+  }
+
+  // Check if all senses are normalized (V1 complete) but not V2 complete
+  for (const sense of senses) {
+    const version = detectMeaningSchemaVersion(sense);
+    if (version === 'v1') {
+      // V1 normalized - needs enrichment
+      return true;
+    } else if (version === 'unknown') {
+      // Invalid schema - skip
+      return false;
+    }
+    // v2 - check if complete
+    const v2Validation = completeMeaningThSchemaV2.safeParse(sense);
+    if (!v2Validation.success) {
+      // V2 but incomplete - needs enrichment
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Validate complete token Thai completeness
  * 
  * ⚠️ CONVENIENCE WRAPPER: This is a wrapper around Zod's completeTokenThSchema.safeParse()
@@ -246,27 +354,40 @@ export function validateCompleteToken(token: string, word: unknown, senses?: unk
 
   // Validate senses if they exist (senses is unknown[] - must be validated)
   if (senses && senses.length > 0) {
-    const sensesValidation = validateNormalizedSenses(senses);
-    if (!sensesValidation.passed) {
-      errors.push(...sensesValidation.errors);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'COMPLETENESS VIOLATION - Senses validation failed',data:{token,senseErrorCount:sensesValidation.errors.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+    // ⚠️ CRITICAL: Check V2 completeness first - if meanings exist, they must be V2 complete
+    const v2SensesValidation = validateV2CompleteSenses(senses);
+    if (!v2SensesValidation.passed) {
+      // V2 incomplete - add V2 errors
+      errors.push(...v2SensesValidation.errors);
+      // #region agent log - V2 COMPLETENESS VIOLATION
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'V2 COMPLETENESS VIOLATION - Senses not V2 complete',data:{token,senseErrorCount:v2SensesValidation.errors.length,errors:v2SensesValidation.errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
       // #endregion
+    } else {
+      // V2 complete - also check normalization (should already be normalized if V2 complete)
+      const sensesValidation = validateNormalizedSenses(senses);
+      if (!sensesValidation.passed) {
+        errors.push(...sensesValidation.errors);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'COMPLETENESS VIOLATION - Senses validation failed',data:{token,senseErrorCount:sensesValidation.errors.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+        // #endregion
+      }
     }
   }
 
-  // Validate complete token completeness validation
+  // Validate complete token completeness validation - use V2 schema to enforce V2 completeness
   const tokenData = {
     token,
     word,
     senses: senses || [],
   };
-  const tokenValidation = completeTokenThSchema.safeParse(tokenData);
+  // ⚠️ CRITICAL: Use V2 schema to enforce V2 completeness requirements
+  const tokenValidation = completeTokenThSchemaV2.safeParse(tokenData);
   if (!tokenValidation.success) {
     const tokenErrors = analyzeValidationErrors(tokenData, tokenValidation, 'token');
     errors.push(...tokenErrors);
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'COMPLETENESS VIOLATION - Token completeness validation failed',data:{token,tokenErrorCount:tokenErrors.length,errors:tokenErrors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+    // #region agent log - V2 COMPLETENESS VIOLATION
+    const hasV2Errors = tokenErrors.some(e => e.message.includes('V2') || e.field.includes('pos_th') || e.field.includes('pos_eng') || e.field.includes('definition_eng'));
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:hasV2Errors ? 'V2 COMPLETENESS VIOLATION - Token V2 completeness validation failed' : 'COMPLETENESS VIOLATION - Token completeness validation failed',data:{token,tokenErrorCount:tokenErrors.length,errors:tokenErrors.map(e=>({field:e.field,message:e.message})),hasV2Errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:hasV2Errors ? 'V2_ENRICH' : 'COMPLETENESS'})}).catch(()=>{});
     // #endregion
   }
 

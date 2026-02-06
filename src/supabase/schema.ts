@@ -129,6 +129,10 @@ export const senses = pgTable('meanings_th', {
   word_th_id: text('word_th_id').references(() => words.word_th, { onDelete: 'cascade' }), // Maps to meaningThSchema.word_th_id (text, FK to words_th.word_th)
   source: text('source'), // Maps to meaningThSchema.source (optional)
   created_at: timestamp('created_at'), // Maps to meaningThSchema.created_at (optional)
+  // V2 fields (optional for backward compatibility)
+  pos_th: text('pos_th'), // Maps to meaningThSchemaV2.pos_th (optional)
+  pos_eng: text('pos_eng'), // Maps to meaningThSchemaV2.pos_eng (optional)
+  definition_eng: text('definition_eng'), // Maps to meaningThSchemaV2.definition_eng (optional)
 });
 
 /**

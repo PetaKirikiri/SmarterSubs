@@ -17,6 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 import { subtitleThSchema } from '../schemas/subtitleThSchema';
 import { wordThSchema } from '../schemas/wordThSchema';
 import { meaningThSchema } from '../schemas/meaningThSchema';
+import { meaningThSchemaV2 } from '../schemas/meaningThSchemaV2';
 
 // Supabase connection
 // ⚠️ Direct database connection - no caching layer
@@ -370,19 +371,25 @@ function generateSenseId(textTh: string, index: number): bigint {
 /**
  * Fetch meanings (senses) for a word from meanings_th table
  * 
- * 📋 Validates against: src/schemas/meaningThSchema.ts
- * Returns array validated with meaningThSchema before returning
+ * 📋 Validates against: src/schemas/meaningThSchema.ts (V1) and meaningThSchemaV2.ts (V2)
+ * Returns array validated with appropriate schema (V1 or V2) before returning
  * 
  * ⚠️ DATA INTEGRITY: Direct database query - always returns latest data from Supabase
  * - No caching, no localStorage, always fresh from database
+ * 
+ * ⚠️ SCHEMA HANDLING: Handles both V1 (no V2 fields) and V2 (with V2 fields) meanings
+ * - V2 schema accepts V1-only data (V2 fields are optional)
+ * - V1 schema fallback for edge cases
+ * - Component can display V2 fields if present
  * 
  * Now queries by BOTH:
  * 1. Deterministic ID generation (for backward compatibility)
  * 2. word_th_id field (for meanings linked via word_th_id after patching)
  * 
  * @param wordTh - word_th (string) from Zod schema
+ * @returns Array of MeaningTh (may include V2 fields if present in database)
  */
-export async function fetchSenses(wordTh: string) {
+export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
   // #region agent log
   console.log('[DEBUG] fetchSenses called with wordTh:', wordTh);
   fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'FETCH SENSES START',data:{wordTh},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
@@ -466,7 +473,24 @@ export async function fetchSenses(wordTh: string) {
   }
   
   // #region agent log - COMBINED RESULTS
-  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'COMBINED RESULTS',data:{wordTh,meaningsByWordThId:dataByWordThId?.length || 0,meaningsByIds:dataByIds?.length || 0,combinedCount:combinedData.length,uniqueIds:seenIds.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+  const sampleCombined = combinedData.slice(0, 3).map((m: any) => ({
+    id: m.id?.toString(),
+    hasDefinitionTh: !!m.definition_th,
+    hasPosTh: !!m.pos_th,
+    hasPosEng: !!m.pos_eng,
+    hasDefinitionEng: !!m.definition_eng,
+    hasV2Fields: !!(m.pos_th || m.pos_eng || m.definition_eng),
+    source: m.source,
+    wordThId: m.word_th_id,
+    definitionThPreview: m.definition_th?.substring(0, 30)
+  }));
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'COMBINED RESULTS',data:{wordTh,meaningsByWordThId:dataByWordThId?.length || 0,meaningsByIds:dataByIds?.length || 0,combinedCount:combinedData.length,uniqueIds:seenIds.size,sampleCombined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+  // #endregion
+  
+  // #region agent log - RAW DATA CHECK
+  if (combinedData.length === 0) {
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'NO MEANINGS FOUND',data:{wordTh,dataByWordThIdCount:dataByWordThId?.length || 0,dataByIdsCount:dataByIds?.length || 0,errorByWordThId:errorByWordThId?.message,errorByIds:errorByIds?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+  }
   // #endregion
   
   // Handle errors - if both queries fail, throw error
@@ -480,11 +504,15 @@ export async function fetchSenses(wordTh: string) {
   console.log('[DEBUG] fetchSenses fetched:', {wordTh, dataCount: data?.length || 0, byWordThId: dataByWordThId?.length || 0, byIds: dataByIds?.length || 0, combined: combinedData.length});
   // #endregion
   
+  // #region agent log - BEFORE VALIDATION
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'BEFORE VALIDATION',data:{wordTh,combinedDataCount:combinedData.length,firstSenseKeys:combinedData[0] ? Object.keys(combinedData[0]) : [],firstSenseSample:combinedData[0] ? {id:combinedData[0].id?.toString(),hasDefinitionTh:!!combinedData[0].definition_th,hasPosTh:!!combinedData[0].pos_th,hasPosEng:!!combinedData[0].pos_eng,hasDefinitionEng:!!combinedData[0].definition_eng,definitionThPreview:combinedData[0].definition_th?.substring(0,30)} : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+  // #endregion
+  
   // Normalize null to undefined and fix datetime format for optional fields (Zod expects undefined, not null)
   // Then validate each sense with Zod schema before returning
   const normalizedData = (data || []).map((sense, index) => {
     // #region agent log - PROCESSING SENSE
-    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'PROCESSING SENSE',data:{wordTh,index,senseId:sense.id?.toString(),senseWordThId:sense.word_th_id,hasWordThId:!!sense.word_th_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'PROCESSING SENSE',data:{wordTh,index,senseId:sense.id?.toString(),senseWordThId:sense.word_th_id,hasWordThId:!!sense.word_th_id,hasDefinitionTh:!!sense.definition_th,hasPosTh:!!sense.pos_th,hasPosEng:!!sense.pos_eng,hasDefinitionEng:!!sense.definition_eng,rawKeys:Object.keys(sense)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
     // #endregion
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'Normalizing sense data',data:{index,senseId:sense.id?.toString(),created_atType:typeof sense.created_at,created_atValue:sense.created_at,created_atIsNull:sense.created_at === null,created_atIsDate:sense.created_at instanceof Date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
@@ -492,6 +520,11 @@ export async function fetchSenses(wordTh: string) {
     
     if (sense.word_th_id === null) sense.word_th_id = undefined;
     if (sense.source === null) sense.source = undefined;
+    
+    // Normalize V2 fields: convert null to undefined (Zod expects undefined, not null)
+    if (sense.pos_th === null) sense.pos_th = undefined;
+    if (sense.pos_eng === null) sense.pos_eng = undefined;
+    if (sense.definition_eng === null) sense.definition_eng = undefined;
     
     // Normalize created_at: convert Date objects to ISO string, null to undefined, invalid strings to undefined
     if (sense.created_at === null) {
@@ -529,27 +562,75 @@ export async function fetchSenses(wordTh: string) {
     }
     
     // Validate with Zod schema before returning
+    // ⚠️ CRITICAL: Handle both V1 and V2 schemas - database may have V1-only or V2 meanings
     try {
-      const validated = meaningThSchema.parse(sense);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'Sense Zod validation passed',data:{index,senseId:validated.id?.toString(),hasDefinition:!!validated.definition_th},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
+      // #region agent log - VALIDATION START
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'VALIDATION START',data:{index,senseId:sense.id?.toString(),senseKeys:Object.keys(sense),hasDefinitionTh:!!sense.definition_th,hasPosTh:!!sense.pos_th,hasPosEng:!!sense.pos_eng,hasDefinitionEng:!!sense.definition_eng},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
       // #endregion
-      return validated;
+      
+      // Try V2 schema first (accepts V2 fields, backward compatible with V1-only data)
+      // V2 schema has V2 fields as optional, so it accepts both V1 and V2 data
+      const v2Result = meaningThSchemaV2.safeParse(sense);
+      if (v2Result.success) {
+        const hasV2Fields = !!(v2Result.data.pos_th || v2Result.data.pos_eng || v2Result.data.definition_eng);
+        // #region agent log - V2 VALIDATION SUCCESS
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V2 VALIDATION SUCCESS',data:{index,senseId:v2Result.data.id?.toString(),hasDefinition:!!v2Result.data.definition_th,hasV2Fields,isV1:!hasV2Fields,isV2:hasV2Fields,definitionTh:v2Result.data.definition_th?.substring(0,30)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+        // #endregion
+        // Return V2 data - it includes all V1 fields plus optional V2 fields
+        // TypeScript will allow V2 fields to be accessed even though return type is MeaningTh[]
+        // The component can check for and display V2 fields if present
+        return v2Result.data as any as MeaningTh; // Cast to MeaningTh[] return type, but preserve V2 fields
+      }
+      
+      // #region agent log - V2 VALIDATION FAILED, TRYING V1
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V2 VALIDATION FAILED, TRYING V1',data:{index,senseId:sense.id?.toString(),v2Error:v2Result.error.message,v2Errors:v2Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+      // #endregion
+      
+      // Fall back to V1 schema if V2 fails (defensive - shouldn't happen but handles edge cases)
+      // Remove V2 fields before V1 validation (V1 schema is strict and rejects unknown keys)
+      const senseForV1 = { ...sense };
+      delete senseForV1.pos_th;
+      delete senseForV1.pos_eng;
+      delete senseForV1.definition_eng;
+      const v1Result = meaningThSchema.safeParse(senseForV1);
+      if (v1Result.success) {
+        // #region agent log - V1 VALIDATION SUCCESS
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V1 VALIDATION SUCCESS',data:{index,senseId:v1Result.data.id?.toString(),hasDefinition:!!v1Result.data.definition_th,isV1:true,definitionTh:v1Result.data.definition_th?.substring(0,30)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+        // #endregion
+        return v1Result.data;
+      }
+      
+      // #region agent log - BOTH VALIDATIONS FAILED
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'BOTH VALIDATIONS FAILED',data:{index,senseId:sense.id?.toString(),v2Error:v2Result.error.message,v1Error:v1Result.error.message,v2Errors:v2Result.error.errors,v1Errors:v1Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+      // #endregion
+      
+      // Both validations failed
+      throw new Error(`V2 validation failed: ${v2Result.error.message}; V1 validation failed: ${v1Result.error.message}`);
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'Sense Zod validation failed',data:{index,senseId:sense.id?.toString(),errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
+      // #region agent log - VALIDATION ERROR
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'VALIDATION ERROR',data:{index,senseId:sense.id?.toString(),errorMessage:error instanceof Error ? error.message : String(error),errorStack:error instanceof Error ? error.stack?.substring(0,200) : undefined,rawSenseKeys:Object.keys(sense)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
       // #endregion
       console.error(`[Fetch] Sense ${index} validation failed for "${wordTh}":`, error);
       // Skip invalid senses instead of throwing - return null to filter out
       return null;
     }
-  }).filter((sense): sense is NonNullable<typeof sense> => sense !== null);
+  });
   
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'Sense normalization and validation complete',data:{wordTh,totalSenses:normalizedData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
+  // #region agent log - FINAL RESULTS
+  const validSenses = normalizedData.filter((s): s is NonNullable<typeof s> => s !== null);
+  const invalidCount = normalizedData.length - validSenses.length;
+  const v1Count = validSenses.filter((s: any) => !(s.pos_th || s.pos_eng || s.definition_eng)).length;
+  const v2Count = validSenses.filter((s: any) => !!(s.pos_th || s.pos_eng || s.definition_eng)).length;
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'FINAL RESULTS',data:{wordTh,totalSenses:normalizedData.length,validSenses:validSenses.length,invalidCount,v1Count,v2Count,firstValidSense:validSenses[0] ? {id:validSenses[0].id?.toString(),hasDefinition:!!validSenses[0].definition_th,hasV2Fields:!!(validSenses[0].pos_th || validSenses[0].pos_eng || validSenses[0].definition_eng),definitionThPreview:validSenses[0].definition_th?.substring(0,30)} : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
   // #endregion
   
-  return normalizedData;
+  if (validSenses.length === 0 && combinedData.length > 0) {
+    // #region agent log - ALL SENSES FILTERED OUT
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'ALL SENSES FILTERED OUT',data:{wordTh,combinedDataCount:combinedData.length,validSensesCount:validSenses.length,invalidCount,rawSample:combinedData[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+    // #endregion
+  }
+  
+  return validSenses;
 }
 
 // REMOVED: failed_words and failed_word_senses tables don't exist in Supabase
@@ -1470,10 +1551,11 @@ export async function saveWordOnly(wordData: {
 /**
  * Save senses (meanings) to meanings_th table
  * 
- * 📋 Validates against: src/schemas/meaningThSchema.ts
+ * 📋 Validates against: src/schemas/meaningThSchema.ts or meaningThSchemaV2.ts
  * 
  * Saves senses separately to meanings_th table.
- * Each sense is validated with meaningThSchema before saving.
+ * Each sense is validated with meaningThSchema (V1) or meaningThSchemaV2 (V2) before saving.
+ * Automatically detects schema version based on presence of V2 fields.
  */
 export async function saveSenses(senses: Array<{
   id: bigint;
@@ -1481,6 +1563,9 @@ export async function saveSenses(senses: Array<{
   source?: string;
   created_at?: string;
   word_th_id?: string;
+  pos_th?: string;
+  pos_eng?: string;
+  definition_eng?: string;
   [key: string]: any;
 }>, wordTh: string): Promise<void> {
   // CRITICAL: wordTh is required - word_th_id must never be null
@@ -1501,20 +1586,28 @@ export async function saveSenses(senses: Array<{
   }
 
   // Validate senses with Zod before saving
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'Validating senses with Zod',data:{senseCount:senses.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-  // #endregion
-  
   const validatedSenses = senses.map((sense, index) => {
     try {
-      const validated = meaningThSchema.parse(sense);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'Sense Zod validation passed',data:{index,senseId:validated.id?.toString(),hasDefinition:!!validated.definition_th},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
-      // #endregion
+      // Detect schema version: try V2 first if V2 fields are present
+      const hasV2Fields = !!(sense.pos_th || sense.pos_eng || sense.definition_eng);
+      let validated;
+      
+      if (hasV2Fields) {
+        // Validate with V2 schema
+        validated = meaningThSchemaV2.strict().parse(sense);
+        // #region agent log - V2 SCHEMA VALIDATION
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'V2 SCHEMA VALIDATION PASSED',data:{index,senseId:validated.id?.toString(),hasPosTh:!!validated.pos_th,hasPosEng:!!validated.pos_eng,hasDefinitionEng:!!validated.definition_eng,isV2Complete:!!(validated.pos_th && validated.pos_eng && validated.definition_eng)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
+        // #endregion
+      } else {
+        // Validate with V1 schema
+        validated = meaningThSchema.strict().parse(sense);
+      }
+      
       return validated;
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'Sense Zod validation failed',data:{index,senseId:sense.id?.toString(),errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
+      // #region agent log - V2 SCHEMA VALIDATION ERROR
+      const hasV2Fields = !!(sense.pos_th || sense.pos_eng || sense.definition_eng);
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'V2 SCHEMA VALIDATION FAILED',data:{index,senseId:sense.id?.toString(),hasV2Fields,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
       // #endregion
       console.error(`[Save] Sense ${index} validation failed:`, error);
       throw error;
@@ -1534,6 +1627,9 @@ export async function saveSenses(senses: Array<{
     word_th_id: string;
     source: string | null;
     created_at: string | null;
+    pos_th?: string | null;
+    pos_eng?: string | null;
+    definition_eng?: string | null;
     metadata?: Record<string, unknown>;
   }> = validatedSenses.map((sense, index) => {
     // Use validated sense directly - it's already typed correctly
@@ -1559,6 +1655,9 @@ export async function saveSenses(senses: Array<{
       word_th_id: string;
       source: string | null;
       created_at: string | null;
+      pos_th?: string | null;
+      pos_eng?: string | null;
+      definition_eng?: string | null;
       metadata?: Record<string, unknown>;
     } = {
       id: idValue, // meaningThSchema.id (bigint) - convert to number or string for Supabase
@@ -1568,9 +1667,20 @@ export async function saveSenses(senses: Array<{
       created_at: sense.created_at || null, // meaningThSchema.created_at
     };
 
+    // Add V2 fields if present
+    if ('pos_th' in sense && sense.pos_th !== undefined) {
+      meaningRow.pos_th = sense.pos_th || null;
+    }
+    if ('pos_eng' in sense && sense.pos_eng !== undefined) {
+      meaningRow.pos_eng = sense.pos_eng || null;
+    }
+    if ('definition_eng' in sense && sense.definition_eng !== undefined) {
+      meaningRow.definition_eng = sense.definition_eng || null;
+    }
+
     // Handle any extra fields (though meaningThSchema.strict() should reject them)
     // This is defensive - if passthrough was used, capture metadata
-    const { id, definition_th, word_th_id, source, created_at, ...senseMetadata } = sense;
+    const { id, definition_th, word_th_id, source, created_at, pos_th, pos_eng, definition_eng, ...senseMetadata } = sense;
     if (Object.keys(senseMetadata).length > 0) {
       meaningRow.metadata = senseMetadata as Record<string, unknown>;
     }
