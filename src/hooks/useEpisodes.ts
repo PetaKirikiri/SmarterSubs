@@ -44,13 +44,26 @@ async function loadWordsAndSenses(subtitleData: any): Promise<any> {
   // subtitleData matches subtitleThSchema - use fields as-is
   const result = { ...subtitleData };
   
-  // Extract word references from tokens_th (subtitleThSchema.tokens_th: z.record(z.any()))
-  // tokens_th format: { "tokens": ["เนื้อ", "เรื่อง", ...] } - plain strings, no conversion needed
+  // Extract word references from tokens_th (subtitleThSchema.tokens_th: {tokens: Array<{t: string, meaning_id?: bigint}>})
+  // tokens_th format: { "tokens": [{t: "เนื้อ", meaning_id: 123}, ...] } - extract t field
   const wordRefs: string[] = [];
   if (subtitleData.tokens_th && typeof subtitleData.tokens_th === 'object') {
-    // Extract tokens array directly - these are plain strings (word_th values)
+    // Extract token texts from objects
     if (subtitleData.tokens_th.tokens && Array.isArray(subtitleData.tokens_th.tokens)) {
-      wordRefs.push(...subtitleData.tokens_th.tokens.filter((v: any) => typeof v === 'string'));
+      for (const tokenItem of subtitleData.tokens_th.tokens) {
+        if (typeof tokenItem === 'string') {
+          // Legacy format - plain string
+          const trimmed = tokenItem.trim();
+          if (trimmed) wordRefs.push(trimmed);
+        } else if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+          // New format - object with t field
+          const t = (tokenItem as any).t;
+          if (typeof t === 'string') {
+            const trimmed = t.trim();
+            if (trimmed) wordRefs.push(trimmed);
+          }
+        }
+      }
     }
   }
   

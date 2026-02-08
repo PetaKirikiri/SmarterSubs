@@ -4,6 +4,7 @@ import { wordThSchema, type WordTh } from './wordThSchema';
 import { episodeSchema, type Episode } from './episodeSchema';
 import { meaningThSchema } from './meaningThSchema';
 import { meaningThSchemaV2, detectMeaningSchemaVersion } from './meaningThSchemaV2';
+import { meaningThSchemaV3, detectMeaningSchemaVersion as detectMeaningSchemaVersionV3 } from './meaningThSchemaV3';
 import { interpretZodError, type ErrorResponse } from '../services/errorResponse';
 // ⚠️ SCHEMA ENFORCEMENT: Import completeness validation schemas and types from centralized location
 import {
@@ -12,6 +13,8 @@ import {
   completeTokenThSchema,
   completeMeaningThSchemaV2,
   completeTokenThSchemaV2,
+  completeMeaningThSchemaV3,
+  completeTokenThSchemaV3,
   type IntegrityError,
   type CompletenessValidationResult,
   // Legacy exports for backward compatibility
@@ -150,6 +153,18 @@ function stripV2Fields(sense: unknown): unknown {
 }
 
 /**
+ * Strip V3 fields from a sense object for V2 validation
+ * This allows V2 validation to work even when V3 columns exist in the database
+ */
+function stripV3Fields(sense: unknown): unknown {
+  if (!sense || typeof sense !== 'object') {
+    return sense;
+  }
+  const { label_eng, ...v2Sense } = sense as Record<string, unknown>;
+  return v2Sense;
+}
+
+/**
  * Validate normalized meanings Thai completeness
  * 
  * ⚠️ CONVENIENCE WRAPPER: This is a wrapper around Zod's normalizedMeaningThSchema.safeParse()
@@ -167,22 +182,30 @@ export function validateNormalizedSenses(senses: unknown[]): CompletenessValidat
   fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VALIDATION START - validateNormalizedSenses',data:{senseCount:senses?.length || 0,hasSenses:!!senses && senses.length > 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
   // #endregion
 
-  // ⚠️ CRITICAL: Validate each sense with base schema first - senses must be unknown until validated
-  // ⚠️ V1/V2 COMPATIBILITY: Strip V2 fields before V1 validation to allow V1 completeness check
-  const validatedSenses: z.infer<typeof meaningThSchema>[] = [];
+  // ⚠️ CRITICAL: Validate each sense with schema first - senses must be unknown until validated
+  // ⚠️ V1/V2/V3 COMPATIBILITY: Check V3 first, then V2, then V1 to support all schema versions
+  const validatedSenses: Array<z.infer<typeof meaningThSchema> | z.infer<typeof meaningThSchemaV2> | z.infer<typeof meaningThSchemaV3>> = [];
   for (const sense of senses) {
-    // Strip V2 fields before V1 validation (allows V1 validation even when V2 columns exist)
-    const v1Sense = stripV2Fields(sense);
-    const senseValidation = meaningThSchema.strict().safeParse(v1Sense);
+    // Try V3 first (most complete)
+    let senseValidation = meaningThSchemaV3.safeParse(sense);
     if (!senseValidation.success) {
-      const errors = analyzeValidationErrors(v1Sense, senseValidation, 'sense');
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense fails base meaningThSchema',data:{errorCount:errors.length,errors:errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
-      // #endregion
-      return {
-        passed: false,
-        errors,
-      };
+      // Try V2
+      senseValidation = meaningThSchemaV2.safeParse(sense);
+      if (!senseValidation.success) {
+        // Try V1 (strip V2/V3 fields first)
+        const v1Sense = stripV2Fields(stripV3Fields(sense));
+        senseValidation = meaningThSchema.strict().safeParse(v1Sense);
+        if (!senseValidation.success) {
+          const errors = analyzeValidationErrors(sense, senseValidation, 'sense');
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense fails base meaningThSchema (V1/V2/V3)',data:{errorCount:errors.length,errors:errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+          // #endregion
+          return {
+            passed: false,
+            errors,
+          };
+        }
+      }
     }
     validatedSenses.push(senseValidation.data);
   }
@@ -215,14 +238,31 @@ export function validateNormalizedSenses(senses: unknown[]): CompletenessValidat
       return;
     }
 
-    // ⚠️ SCHEMA ENFORCEMENT: Use completeness validation schema
-    // Base schema (meaningThSchema) is validated first, then completeness rules are applied
-    const validation = normalizedMeaningThSchema.safeParse(sense);
-    if (!validation.success) {
-      const senseErrors = analyzeValidationErrors(sense, validation, `senses[${idx}]`);
-      errors.push(...senseErrors);
+    // ⚠️ NORMALIZATION CHECK: Verify source is normalized (not 'orst' or 'ORST')
+    // This check applies regardless of schema version (V1/V2/V3)
+    const source = (sense as any)?.source;
+    if (!source || source.trim().length === 0) {
+      errors.push({
+        field: `senses[${idx}].source`,
+        message: `Sense at index ${idx} is missing source (must be normalized)`,
+        present: false,
+        expected: 'Normalized source (not "orst" or "ORST")',
+      });
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense not normalized',data:{senseIndex:idx,senseSource:sense.source,errorCount:senseErrors.length,errors:senseErrors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense missing source',data:{senseIndex:idx},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+    
+    if (source === 'orst' || source === 'ORST') {
+      errors.push({
+        field: `senses[${idx}].source`,
+        message: `Sense at index ${idx} is not normalized (source is "${source}")`,
+        present: true,
+        expected: 'Normalized source (not "orst" or "ORST")',
+      });
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateNormalizedSenses',message:'COMPLETENESS VIOLATION - Sense not normalized',data:{senseIndex:idx,senseSource:source},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
       // #endregion
     }
   });
@@ -255,12 +295,14 @@ export function validateV2CompleteSenses(senses: unknown[]): CompletenessValidat
     };
   }
 
-  // ⚠️ CRITICAL: Validate each sense with V2 schema first
+  // ⚠️ CRITICAL: Validate each sense with V2 schema first (strip V3 fields since V2 schema is strict)
   const validatedSenses: z.infer<typeof meaningThSchemaV2>[] = [];
   for (const sense of senses) {
-    const senseValidation = meaningThSchemaV2.strict().safeParse(sense);
+    // Strip V3 fields before V2 validation
+    const v2Sense = stripV3Fields(sense);
+    const senseValidation = meaningThSchemaV2.strict().safeParse(v2Sense);
     if (!senseValidation.success) {
-      const errors = analyzeValidationErrors(sense, senseValidation, 'sense');
+      const errors = analyzeValidationErrors(v2Sense, senseValidation, 'sense');
       return {
         passed: false,
         errors,
@@ -307,7 +349,9 @@ export function needsV2Enrichment(senses: unknown[]): boolean {
 
   // Check if all senses are normalized (V1 complete) but not V2 complete
   for (const sense of senses) {
-    const version = detectMeaningSchemaVersion(sense);
+    // Strip V3 fields before V2 check
+    const v2Sense = stripV3Fields(sense);
+    const version = detectMeaningSchemaVersion(v2Sense);
     if (version === 'v1') {
       // V1 normalized - needs enrichment
       return true;
@@ -316,7 +360,7 @@ export function needsV2Enrichment(senses: unknown[]): boolean {
       return false;
     }
     // v2 - check if complete
-    const v2Validation = completeMeaningThSchemaV2.safeParse(sense);
+    const v2Validation = completeMeaningThSchemaV2.safeParse(v2Sense);
     if (!v2Validation.success) {
       // V2 but incomplete - needs enrichment
       return true;
@@ -324,6 +368,117 @@ export function needsV2Enrichment(senses: unknown[]): boolean {
   }
 
   return false;
+}
+
+/**
+ * Validate V3 complete meanings Thai completeness
+ * 
+ * ⚠️ CONVENIENCE WRAPPER: This is a wrapper around Zod's completeMeaningThSchemaV3.safeParse()
+ * Formats Zod errors into UI-friendly CompletenessValidationResult format
+ * 
+ * Returns validation result with errors if any meanings are not V3 complete
+ */
+export function validateV3CompleteSenses(senses: unknown[]): CompletenessValidationResult {
+  if (!senses || senses.length === 0) {
+    return {
+      passed: true, // No senses is valid (senses are optional)
+      errors: [],
+    };
+  }
+
+  // ⚠️ CRITICAL: Validate each sense with V3 schema first
+  const validatedSenses: z.infer<typeof meaningThSchemaV3>[] = [];
+  for (const sense of senses) {
+    const senseValidation = meaningThSchemaV3.strict().safeParse(sense);
+    if (!senseValidation.success) {
+      const errors = analyzeValidationErrors(sense, senseValidation, 'sense');
+      return {
+        passed: false,
+        errors,
+      };
+    }
+    validatedSenses.push(senseValidation.data);
+  }
+
+  const errors: IntegrityError[] = [];
+  
+  validatedSenses.forEach((sense, idx: number) => {
+    if (!sense) {
+      errors.push({
+        field: `senses[${idx}]`,
+        message: `Sense at index ${idx} is null or undefined`,
+        present: false,
+        expected: 'V3 complete sense object with label_eng (and V2 fields)',
+      });
+      return;
+    }
+
+    // ⚠️ SCHEMA ENFORCEMENT: Use V3 completeness validation schema
+    const validation = completeMeaningThSchemaV3.safeParse(sense);
+    if (!validation.success) {
+      const senseErrors = analyzeValidationErrors(sense, validation, `senses[${idx}]`);
+      errors.push(...senseErrors);
+    }
+  });
+
+  return {
+    passed: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Detect if meanings need V3 enrichment
+ * Returns true if meanings are V2-complete but missing V3 fields
+ */
+export function needsV3Enrichment(senses: unknown[]): boolean {
+  // #region agent log - V3 NEEDS ENRICHMENT CHECK START
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT CHECK START',data:{sensesCount:senses?.length || 0,hasSenses:!!(senses && senses.length > 0)},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+  // #endregion
+  
+  if (!senses || senses.length === 0) {
+    // #region agent log - V3 NEEDS ENRICHMENT NO SENSES
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT NO SENSES',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+    // #endregion
+    return false;
+  }
+
+  // Check if all senses are V2-complete but not V3-complete
+  let needsEnrichment = false;
+  for (let idx = 0; idx < senses.length; idx++) {
+    const sense = senses[idx];
+    
+    // First check if V2-complete (strip V3 fields first since V2 schema is strict)
+    const v2Sense = stripV3Fields(sense);
+    const v2Validation = completeMeaningThSchemaV2.safeParse(v2Sense);
+    if (!v2Validation.success) {
+      // Not V2-complete - cannot enrich V3
+      // #region agent log - V3 NEEDS ENRICHMENT NOT V2 COMPLETE
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT NOT V2 COMPLETE',data:{senseIndex:idx,v2ValidationErrors:v2Validation.error?.errors?.map((e:any)=>({path:e.path,message:e.message}))},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+      // #endregion
+      return false;
+    }
+
+    // V2-complete - check if V3-complete
+    const v3Validation = completeMeaningThSchemaV3.safeParse(sense);
+    if (!v3Validation.success) {
+      // V2-complete but V3 incomplete - needs enrichment
+      // #region agent log - V3 NEEDS ENRICHMENT V2 COMPLETE BUT V3 INCOMPLETE
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT V2 COMPLETE BUT V3 INCOMPLETE',data:{senseIndex:idx,v3ValidationErrors:v3Validation.error?.errors?.map((e:any)=>({path:e.path,message:e.message})),senseData:(sense as any)?.label_eng ? 'has_label_eng' : 'no_label_eng'},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+      // #endregion
+      needsEnrichment = true;
+    } else {
+      // #region agent log - V3 NEEDS ENRICHMENT V3 COMPLETE
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT V3 COMPLETE',data:{senseIndex:idx,hasLabelEng:!!(sense as any)?.label_eng},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+      // #endregion
+    }
+  }
+
+  // #region agent log - V3 NEEDS ENRICHMENT CHECK RESULT
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:needsV3Enrichment',message:'V3 NEEDS ENRICHMENT CHECK RESULT',data:{sensesCount:senses.length,needsEnrichment},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+  // #endregion
+
+  return needsEnrichment;
 }
 
 /**
@@ -354,16 +509,30 @@ export function validateCompleteToken(token: string, word: unknown, senses?: unk
 
   // Validate senses if they exist (senses is unknown[] - must be validated)
   if (senses && senses.length > 0) {
-    // ⚠️ CRITICAL: Check V2 completeness first - if meanings exist, they must be V2 complete
-    const v2SensesValidation = validateV2CompleteSenses(senses);
-    if (!v2SensesValidation.passed) {
-      // V2 incomplete - add V2 errors
-      errors.push(...v2SensesValidation.errors);
-      // #region agent log - V2 COMPLETENESS VIOLATION
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'V2 COMPLETENESS VIOLATION - Senses not V2 complete',data:{token,senseErrorCount:v2SensesValidation.errors.length,errors:v2SensesValidation.errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
-      // #endregion
+    // ⚠️ CRITICAL: Check V3 completeness first, then V2 (V2 is required before V3)
+    const v3SensesValidation = validateV3CompleteSenses(senses);
+    if (!v3SensesValidation.passed) {
+      // V3 incomplete - check V2 completeness (V2 is REQUIRED)
+      const v2SensesValidation = validateV2CompleteSenses(senses);
+      if (!v2SensesValidation.passed) {
+        // V2 incomplete - this is an error (V2 must be complete before V3)
+        errors.push(...v2SensesValidation.errors);
+        // #region agent log - V2 COMPLETENESS VIOLATION
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'V2 COMPLETENESS VIOLATION - Senses not V2 complete (V2 required before V3)',data:{token,senseErrorCount:v2SensesValidation.errors.length,errors:v2SensesValidation.errors.map(e=>({field:e.field,message:e.message}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
+        // #endregion
+      } else {
+        // V2 complete but V3 incomplete - acceptable (V3 is optional)
+        // Still check normalization
+        const sensesValidation = validateNormalizedSenses(senses);
+        if (!sensesValidation.passed) {
+          errors.push(...sensesValidation.errors);
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:'COMPLETENESS VIOLATION - Senses validation failed',data:{token,senseErrorCount:sensesValidation.errors.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'COMPLETENESS'})}).catch(()=>{});
+          // #endregion
+        }
+      }
     } else {
-      // V2 complete - also check normalization (should already be normalized if V2 complete)
+      // V3 complete - also check normalization (should already be normalized if V3 complete)
       const sensesValidation = validateNormalizedSenses(senses);
       if (!sensesValidation.passed) {
         errors.push(...sensesValidation.errors);
@@ -374,22 +543,34 @@ export function validateCompleteToken(token: string, word: unknown, senses?: unk
     }
   }
 
-  // Validate complete token completeness validation - use V2 schema to enforce V2 completeness
+  // Validate complete token completeness validation - check V3 first, then V2
   const tokenData = {
     token,
     word,
     senses: senses || [],
   };
-  // ⚠️ CRITICAL: Use V2 schema to enforce V2 completeness requirements
-  const tokenValidation = completeTokenThSchemaV2.safeParse(tokenData);
-  if (!tokenValidation.success) {
-    const tokenErrors = analyzeValidationErrors(tokenData, tokenValidation, 'token');
-    errors.push(...tokenErrors);
-    // #region agent log - V2 COMPLETENESS VIOLATION
-    const hasV2Errors = tokenErrors.some(e => e.message.includes('V2') || e.field.includes('pos_th') || e.field.includes('pos_eng') || e.field.includes('definition_eng'));
-    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:hasV2Errors ? 'V2 COMPLETENESS VIOLATION - Token V2 completeness validation failed' : 'COMPLETENESS VIOLATION - Token completeness validation failed',data:{token,tokenErrorCount:tokenErrors.length,errors:tokenErrors.map(e=>({field:e.field,message:e.message})),hasV2Errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:hasV2Errors ? 'V2_ENRICH' : 'COMPLETENESS'})}).catch(()=>{});
-    // #endregion
+  // ⚠️ CRITICAL: Check V3 schema first, then V2 (V2 is required before V3)
+  const v3TokenValidation = completeTokenThSchemaV3.safeParse(tokenData);
+  if (!v3TokenValidation.success) {
+    // V3 validation failed - try V2 (strip V3 fields from senses first)
+    const v2TokenData = {
+      token,
+      word,
+      senses: (senses || []).map(sense => stripV3Fields(sense)),
+    };
+    const v2TokenValidation = completeTokenThSchemaV2.safeParse(v2TokenData);
+    if (!v2TokenValidation.success) {
+      // V2 validation failed - this is an error (V2 is REQUIRED)
+      const tokenErrors = analyzeValidationErrors(v2TokenData, v2TokenValidation, 'token');
+      errors.push(...tokenErrors);
+      // #region agent log - V2 COMPLETENESS VIOLATION
+      const hasV2Errors = tokenErrors.some(e => e.message.includes('V2') || e.field.includes('pos_th') || e.field.includes('pos_eng') || e.field.includes('definition_eng'));
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'schemas/integrityValidation.ts:validateCompleteToken',message:hasV2Errors ? 'V2 COMPLETENESS VIOLATION - Token V2 completeness validation failed (V2 required before V3)' : 'COMPLETENESS VIOLATION - Token completeness validation failed',data:{token,tokenErrorCount:tokenErrors.length,errors:tokenErrors.map(e=>({field:e.field,message:e.message})),hasV2Errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:hasV2Errors ? 'V2_ENRICH' : 'COMPLETENESS'})}).catch(()=>{});
+      // #endregion
+    }
+    // If V2 validation passed, token is V2-complete (V3 is optional)
   }
+  // If V3 validation passed, token is V3-complete
 
   const result = {
     passed: errors.length === 0,
@@ -501,8 +682,15 @@ export function checkSubtitleIntegrity(
   // Validate each referenced word from tokens_th
   if (subtitle.tokens_th && typeof subtitle.tokens_th === 'object' && subtitle.tokens_th.tokens && Array.isArray(subtitle.tokens_th.tokens)) {
     const uniqueWordIds = new Set<string>();
-    subtitle.tokens_th.tokens.forEach((wordRef: string) => {
-      const textTh = wordRef.trim();
+    subtitle.tokens_th.tokens.forEach((wordRef: unknown) => {
+      // Handle both string format (legacy) and object format {t: string, meaning_id?: bigint}
+      let textTh: string | null = null;
+      if (typeof wordRef === 'string') {
+        textTh = wordRef.trim();
+      } else if (wordRef && typeof wordRef === 'object' && 't' in wordRef) {
+        const t = (wordRef as any).t;
+        textTh = typeof t === 'string' ? t.trim() : null;
+      }
       if (textTh) {
         uniqueWordIds.add(textTh);
       }

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { numberCoerce } from './zodHelpers';
+import { numberCoerce, bigintCoerce } from './zodHelpers';
 
 /**
  * Subtitle Thai Schema - matches ACTUAL database column names (snake_case)
@@ -19,7 +19,14 @@ export const subtitleThSchema = z.object({
   end_sec_th: numberCoerce
     .refine(val => val >= 0, 'end_sec_th cannot be negative')
     .refine(val => val < 86400, 'end_sec_th seems unreasonably large (over 24 hours)'),
-  tokens_th: z.object({ tokens: z.array(z.string()) }).optional(), // Optional - Thai tokens (strict shape)
+  tokens_th: z.object({ 
+    tokens: z.array(
+      z.object({ 
+        t: z.string(), // Token text
+        meaning_id: bigintCoerce.optional() // Optional meaning ID (bigint)
+      })
+    ) 
+  }).optional(), // Optional - Thai tokens (array of objects with t and meaning_id)
 }).strict() // Reject unknown fields - must be called BEFORE .refine()
 .refine(
   (data) => {

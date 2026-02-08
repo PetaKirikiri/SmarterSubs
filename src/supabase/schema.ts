@@ -133,6 +133,8 @@ export const senses = pgTable('meanings_th', {
   pos_th: text('pos_th'), // Maps to meaningThSchemaV2.pos_th (optional)
   pos_eng: text('pos_eng'), // Maps to meaningThSchemaV2.pos_eng (optional)
   definition_eng: text('definition_eng'), // Maps to meaningThSchemaV2.definition_eng (optional)
+  // V3 fields (optional for backward compatibility)
+  label_eng: text('label_eng'), // Maps to meaningThSchemaV3.label_eng (optional)
 });
 
 /**

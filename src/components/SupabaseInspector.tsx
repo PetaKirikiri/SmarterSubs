@@ -17,13 +17,15 @@ import { fetchOrstMeanings } from '../services/meanings/fetchOrstMeanings';
 import { normalizeSensesWithGPT } from '../services/meanings/gptNormalizeSenses';
 import { createMeaningsWithGPT, type GPTMeaningContext } from '../services/meanings/gptMeaning';
 import { enrichMeaningsWithGPT } from '../services/meanings/gptEnrichMeanings';
+import { enrichMeaningsWithGPTV3 } from '../services/meanings/gptEnrichMeaningsV3';
 import { getValidatedProcessingOrder, type PipelineContext, pipelineContextSchema } from '../schemas/processingOrderSchema';
 import { executeStepsFromSchema } from '../services/processingPipeline';
 import { subtitleThSchema, type SubtitleTh } from '../schemas/subtitleThSchema';
 import { wordThSchema, type WordTh } from '../schemas/wordThSchema';
 import { meaningThSchema, type MeaningTh } from '../schemas/meaningThSchema';
 import { meaningThSchemaV2, type MeaningThV2 } from '../schemas/meaningThSchemaV2';
-import { validateCompleteWord, validateNormalizedSenses, validateCompleteToken, validateV2CompleteSenses, needsV2Enrichment } from '../schemas/integrityValidation';
+import { meaningThSchemaV3, type MeaningThV3 } from '../schemas/meaningThSchemaV3';
+import { validateCompleteWord, validateNormalizedSenses, validateCompleteToken, validateV2CompleteSenses, needsV2Enrichment, needsV3Enrichment } from '../schemas/integrityValidation';
 import { z } from 'zod';
 
 // Helper function to only log errors/problems, not successful operations
@@ -85,7 +87,9 @@ export function SupabaseInspector() {
   // We'll compute tokens directly in render to ensure it's always fresh
   const [selectedToken, setSelectedToken] = useState<string | null>(null);
   const [wordData, setWordData] = useState<any>(null);
-  const [senses, setSenses] = useState<(MeaningTh | MeaningThV2)[]>([]);
+  const [senses, setSenses] = useState<(MeaningTh | MeaningThV2 | MeaningThV3)[]>([]);
+  const [selectedMeaning, setSelectedMeaning] = useState<MeaningThV2 | MeaningThV3 | null>(null);
+  const [tokenLabelMap, setTokenLabelMap] = useState<Map<string, string>>(new Map()); // token -> label_eng
   const [fetchingOrst, setFetchingOrst] = useState(false);
   const [normalizingGPT, setNormalizingGPT] = useState(false);
   const [processingSubtitle, setProcessingSubtitle] = useState(false);
@@ -96,6 +100,7 @@ export function SupabaseInspector() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [wordExistsMap, setWordExistsMap] = useState<Map<string, boolean>>(new Map());
+  const [subtitleInputValue, setSubtitleInputValue] = useState<string>('');
 
   // Helper function to strip V2 fields from senses for V1 validation
   // This allows V1 validation to work even when V2 columns exist in the database
@@ -104,21 +109,67 @@ export function SupabaseInspector() {
       if (!sense || typeof sense !== 'object') {
         return sense as MeaningTh;
       }
-      const { pos_th, pos_eng, definition_eng, ...v1Sense } = sense as Record<string, unknown>;
+      const { pos_th, pos_eng, definition_eng, label_eng, ...v1Sense } = sense as Record<string, unknown>;
       return v1Sense as MeaningTh;
+    });
+  };
+
+  // Helper function to extract token text from token object or string
+  const getTokenText = (token: unknown): string | null => {
+    if (typeof token === 'string') {
+      return token.trim() || null;
+    }
+    if (token && typeof token === 'object' && 't' in token) {
+      const text = (token as any).t;
+      return typeof text === 'string' ? text.trim() || null : null;
+    }
+    return null;
+  };
+
+  // Helper function to check if tokens array includes a token text
+  const tokensInclude = (tokens: unknown[] | undefined, tokenText: string): boolean => {
+    if (!tokens || !Array.isArray(tokens)) return false;
+    return tokens.some(token => {
+      const text = getTokenText(token);
+      return text === tokenText;
+    });
+  };
+
+  // Helper function to get token index in tokens array
+  const getTokenIndex = (tokens: unknown[] | undefined, tokenText: string): number => {
+    if (!tokens || !Array.isArray(tokens)) return -1;
+    return tokens.findIndex(token => {
+      const text = getTokenText(token);
+      return text === tokenText;
     });
   };
 
   // Validation helper functions - validate data before setting state
   const validateSubtitleTh = (data: unknown): SubtitleTh | null => {
-    
     try {
+      // Convert old format (string[]) to new format ({t: string, meaning_id?: bigint}[]) if needed
+      if (data && typeof data === 'object' && 'tokens_th' in data) {
+        const tokensTh = (data as any).tokens_th;
+        if (tokensTh && typeof tokensTh === 'object' && 'tokens' in tokensTh && Array.isArray(tokensTh.tokens)) {
+          // Check if tokens are strings (old format) and convert to objects
+          const needsConversion = tokensTh.tokens.some((t: unknown) => typeof t === 'string');
+          if (needsConversion) {
+            const convertedTokens = tokensTh.tokens.map((t: unknown) => {
+              if (typeof t === 'string') {
+                return { t: t.trim() };
+              }
+              return t;
+            });
+            (data as any).tokens_th = { tokens: convertedTokens };
+          }
+        }
+      }
+      
       const result = subtitleThSchema.parse(data);
       
-      console.log(`[Zod Validation] ✓ Subtitle ${data?.id} passed subtitleThSchema validation`);
+      console.log(`[Zod Validation] ✓ Subtitle ${(data as any)?.id} passed subtitleThSchema validation`);
       return result;
     } catch (error) {
-      
       console.error('[Zod Validation] ✗ Invalid subtitle data:', error);
       return null;
     }
@@ -152,9 +203,19 @@ export function SupabaseInspector() {
   const refreshWordDataCompleteness = async () => {
     const currentSubtitle = subtitles[currentSubtitleIndex];
     const rawTokens = currentSubtitle?.tokens_th?.tokens;
-    const currentTokens = (!rawTokens || !Array.isArray(rawTokens)) ? [] : rawTokens
-      .map((token: string) => token?.trim())
-      .filter((token: string) => token && token.length > 0);
+    // Handle both formats: array of strings OR array of objects with {t, meaning_id}
+    const currentTokens: string[] = [];
+    if (rawTokens && Array.isArray(rawTokens)) {
+      for (const tokenItem of rawTokens) {
+        if (typeof tokenItem === 'string') {
+          const trimmed = tokenItem.trim();
+          if (trimmed) currentTokens.push(trimmed);
+        } else if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+          const tokenText = (tokenItem as any).t?.trim();
+          if (tokenText) currentTokens.push(tokenText);
+        }
+      }
+    }
 
     if (currentTokens.length === 0) {
       setWordExistsMap(new Map());
@@ -176,21 +237,27 @@ export function SupabaseInspector() {
     setWordExistsMap(existsMap);
   };
 
-  const validateSenses = (data: unknown[]): (MeaningTh | MeaningThV2)[] => {
-    const validated: (MeaningTh | MeaningThV2)[] = [];
+  const validateSenses = (data: unknown[]): (MeaningTh | MeaningThV2 | MeaningThV3)[] => {
+    const validated: (MeaningTh | MeaningThV2 | MeaningThV3)[] = [];
     for (const sense of data) {
       try {
-        // Try V2 schema first (backward compatible with V1)
-        const v2Result = meaningThSchemaV2.safeParse(sense);
-        if (v2Result.success) {
-          validated.push(v2Result.data);
+        // Try V3 schema first (backward compatible with V1/V2)
+        const v3Result = meaningThSchemaV3.safeParse(sense);
+        if (v3Result.success) {
+          validated.push(v3Result.data);
         } else {
-          // Fall back to V1 schema
-          const v1Result = meaningThSchema.strict().safeParse(sense);
-          if (v1Result.success) {
-            validated.push(v1Result.data);
+          // Try V2 schema (backward compatible with V1)
+          const v2Result = meaningThSchemaV2.safeParse(sense);
+          if (v2Result.success) {
+            validated.push(v2Result.data);
           } else {
-            console.error('[Zod Validation] ✗ Invalid sense data, skipping:', v1Result.error);
+            // Fall back to V1 schema
+            const v1Result = meaningThSchema.strict().safeParse(sense);
+            if (v1Result.success) {
+              validated.push(v1Result.data);
+            } else {
+              console.error('[Zod Validation] ✗ Invalid sense data, skipping:', v1Result.error);
+            }
           }
         }
       } catch (error) {
@@ -339,9 +406,19 @@ export function SupabaseInspector() {
   useEffect(() => {
     const currentSubtitle = subtitles[currentSubtitleIndex];
     const rawTokens = currentSubtitle?.tokens_th?.tokens;
-    const currentTokens = (!rawTokens || !Array.isArray(rawTokens)) ? [] : rawTokens
-      .map((token: string) => token?.trim())
-      .filter((token: string) => token && token.length > 0);
+    // Handle both formats: array of strings OR array of objects with {t, meaning_id}
+    const currentTokens: string[] = [];
+    if (rawTokens && Array.isArray(rawTokens)) {
+      for (const tokenItem of rawTokens) {
+        if (typeof tokenItem === 'string') {
+          const trimmed = tokenItem.trim();
+          if (trimmed) currentTokens.push(trimmed);
+        } else if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+          const tokenText = (tokenItem as any).t?.trim();
+          if (tokenText) currentTokens.push(tokenText);
+        }
+      }
+    }
 
     if (currentTokens.length === 0) {
       setWordExistsMap(new Map());
@@ -366,6 +443,67 @@ export function SupabaseInspector() {
 
     checkWordDataCompleteness();
   }, [currentSubtitleIndex, subtitles]);
+
+  // Reset selectedMeaning when selectedToken changes
+  useEffect(() => {
+    setSelectedMeaning(null);
+  }, [selectedToken]);
+
+  // Fetch label_eng for tokens that have meaning_id in subtitle data
+  useEffect(() => {
+    const index = currentSubtitleIndex;
+    const subs = subtitles;
+    const currentSubtitle = subs[index];
+    const rawTokens = currentSubtitle?.tokens_th?.tokens;
+    
+    if (!rawTokens || !Array.isArray(rawTokens)) {
+      setTokenLabelMap(new Map());
+      return;
+    }
+
+    async function fetchTokenLabels() {
+      const labelMap = new Map<string, string>();
+      const fetchPromises: Promise<void>[] = [];
+
+      for (const tokenItem of rawTokens) {
+        if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem && 'meaning_id' in tokenItem) {
+          const tokenText = (tokenItem as any).t?.trim();
+          const meaningId = (tokenItem as any).meaning_id;
+          
+          if (tokenText && meaningId !== undefined && meaningId !== null) {
+            fetchPromises.push(
+              fetchMeaningById(meaningId).then(meaning => {
+                if (meaning) {
+                  const labelEng = (meaning as any)?.label_eng;
+                  if (labelEng && typeof labelEng === 'string' && labelEng.trim().length > 0) {
+                    labelMap.set(tokenText, labelEng.trim());
+                    console.log(`[Token Labels] Found label_eng for token "${tokenText}": "${labelEng.trim()}"`);
+                  } else {
+                    console.log(`[Token Labels] Meaning ${meaningId} for token "${tokenText}" exists but has no label_eng`);
+                  }
+                } else {
+                  console.warn(`[Token Labels] Meaning ${meaningId} for token "${tokenText}" not found`);
+                }
+              }).catch(err => {
+                console.warn(`[Token Labels] Failed to fetch meaning ${meaningId} for token "${tokenText}":`, err);
+              })
+            );
+          }
+        }
+      }
+
+      await Promise.all(fetchPromises);
+      console.log(`[Token Labels] Loaded ${labelMap.size} labels for current subtitle`);
+      setTokenLabelMap(labelMap);
+    }
+
+    fetchTokenLabels();
+  }, [currentSubtitleIndex, subtitles]);
+
+  // Clear subtitle input when subtitle index changes externally (e.g., via Back/Next buttons)
+  useEffect(() => {
+    setSubtitleInputValue('');
+  }, [currentSubtitleIndex]);
 
   // Fetch word data and senses when token is selected
   // ⚠️ Direct database queries - always fetches latest data from Supabase (no caching)
@@ -687,16 +825,20 @@ export function SupabaseInspector() {
       // Check if meanings need V2 enrichment (normalized V1 but missing V2 fields)
       const needsEnrichment = hasSenses && needsV2Enrichment(existingSenses);
       
-      // FAST SKIP: If Zod contract passes AND senses exist AND senses are normalized AND V2 complete, skip immediately
+      // FAST SKIP: If Zod contract passes AND senses exist AND senses are normalized AND V2 complete, skip workflow
       // ⚠️ CRITICAL: Cannot skip if:
       // - senses are missing
       // - senses have ORST source (must normalize)
-      // - senses need V2 enrichment (must enrich)
+      // - senses need V2 enrichment (must enrich V2 - next evolution stage)
+      // Note: V3 will be checked naturally after V2 completes (next evolution)
       if (tokenContractValidation.passed && hasSenses && !hasOrstSenses && !needsEnrichment) {
-        options.onSkip?.('word_all_complete');
-        options.skipReasons && (options.skipReasons['word_all_complete'] = (options.skipReasons['word_all_complete'] || 0) + 1);
-        return { processed: false, skipped: true };
+        // Contract passes and V2 is complete - workflow can be skipped
+        // V3 will be checked naturally in the pipeline after V2
       }
+      
+      // #region agent log - PROCESS SINGLE TOKEN NOT SKIPPING
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'PROCESS SINGLE TOKEN NOT SKIPPING',data:{token,tokenContractValidationPassed:tokenContractValidation.passed,hasSenses,hasOrstSenses,needsEnrichment,willProcess:true},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       
       // ⚠️ CRITICAL: Use Zod contract validation to determine what needs processing
       // NO manual checks - ALL decisions based on Zod contracts from integrityCheck.ts
@@ -761,6 +903,10 @@ export function SupabaseInspector() {
       // Check if V2 enrichment is needed (even if workflow steps are complete)
       const needsV2EnrichmentCheck = needsEnrichment;
       
+      // ⚠️ PIPELINE EVOLUTION: V3 is the next evolution after V2
+      // Don't check V3 early - let it happen naturally in the pipeline after V2 completes
+      // The pipeline flows: workflow → V2 (if needed) → V3 (if needed, naturally after V2)
+      
       if (stepsToProcess.length === 0) {
         if (needsV2EnrichmentCheck) {
           // V2 enrichment needed - skip workflow execution but continue to enrichment logic
@@ -769,12 +915,27 @@ export function SupabaseInspector() {
           const finalG2P = existingWord?.g2p;
           const finalPhonetic = existingWord?.phonetic_en;
           
-          // Jump directly to V2 enrichment (skip workflow execution)
-          // This will be handled in the enrichment section below
+          // Jump directly to enrichment (skip workflow execution)
+          // V2 will happen, then V3 will happen naturally after V2 completes
         } else {
-          options.onSkip?.('no_workflow_no_enrichment');
-          options.skipReasons && (options.skipReasons['word_all_complete'] = (options.skipReasons['word_all_complete'] || 0) + 1);
-          return { processed: false, skipped: true };
+          // Check if V3 is needed (only after confirming V2 is complete)
+          // This is the natural pipeline progression: V2 complete → check V3
+          const needsV3Check = hasSenses && needsV3Enrichment(existingSenses);
+          if (needsV3Check) {
+            // V3 enrichment needed - skip workflow execution but continue to enrichment logic
+            // Set up meanings and context for enrichment
+            const meanings = existingSenses || [];
+            const finalG2P = existingWord?.g2p;
+            const finalPhonetic = existingWord?.phonetic_en;
+            
+            // Jump directly to enrichment (skip workflow execution)
+            // V3 will happen naturally in the pipeline
+          } else {
+            // Everything complete - can skip
+            options.onSkip?.('no_workflow_no_enrichment');
+            options.skipReasons && (options.skipReasons['word_all_complete'] = (options.skipReasons['word_all_complete'] || 0) + 1);
+            return { processed: false, skipped: true };
+          }
         }
       }
 
@@ -866,12 +1027,20 @@ export function SupabaseInspector() {
         finalPhonetic = existingWord?.phonetic_en;
       }
       
-      // V2 Enrichment: If meanings are normalized (V1) but missing V2 fields, enrich them
-      // ⚠️ CRITICAL: Only enrich if meanings are already normalized (not ORST)
-      // Skip enrichment if meanings are already V2 complete
+      // ⚠️ PIPELINE EVOLUTION: V2 enrichment (natural progression from V1)
+      // If meanings are normalized (V1) but missing V2 fields, enrich them
+      // This is part of the natural pipeline flow: V1 → V2 → V3
+      // Only enrich if meanings are already normalized (not ORST)
       // This check runs even if workflow was skipped (stepsToProcess.length === 0)
-      if (meanings.length > 0 && needsV2Enrichment(meanings)) {
+      const v2EnrichmentNeeded = meanings.length > 0 && needsV2Enrichment(meanings);
+      // #region agent log - V2 ENRICHMENT CHECK
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V2 ENRICHMENT CHECK',data:{token,meaningsCount:meanings.length,v2EnrichmentNeeded,meaningsSample:meanings.slice(0,2).map((m:any)=>({id:m.id?.toString(),hasV2Fields:!!(m.pos_th || m.pos_eng || m.definition_eng),source:m.source}))},timestamp:Date.now(),runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
+      // #endregion
+      if (v2EnrichmentNeeded) {
         console.log(`${logPrefix} Enriching meanings with V2 fields (pos_th, pos_eng, definition_eng) for "${token}"...`);
+        // #region agent log - V2 ENRICHMENT START
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V2 ENRICHMENT START',data:{token,meaningsCount:meanings.length},timestamp:Date.now(),runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
+        // #endregion
         
         try {
           const enrichedMeanings = await enrichMeaningsWithGPT(meanings, {
@@ -885,18 +1054,109 @@ export function SupabaseInspector() {
             console.log(`${logPrefix} ✓ Enriched ${enrichedMeanings.length} meaning(s) with V2 fields for "${token}"`);
             meanings = enrichedMeanings; // Use enriched meanings
             
+            // ⚠️ CRITICAL: Save V2 enriched meanings immediately (gate stage - must complete before V3)
+            const sensesToSaveV2 = enrichedMeanings.map((meaning) => {
+              const meaningAny = meaning as any;
+              return {
+                id: meaning.id,
+                definition_th: meaning.definition_th,
+                source: meaning.source,
+                created_at: meaning.created_at,
+                word_th_id: meaning.word_th_id || token,
+                ...(meaningAny.pos_th && { pos_th: meaningAny.pos_th }),
+                ...(meaningAny.pos_eng && { pos_eng: meaningAny.pos_eng }),
+                ...(meaningAny.definition_eng && { definition_eng: meaningAny.definition_eng }),
+              };
+            });
+            await saveSenses(sensesToSaveV2, token);
+            console.log(`${logPrefix} ✓ Saved V2 enriched senses for "${token}"`);
+            
+            // ⚠️ CRITICAL: Refetch senses after V2 enrichment save (gate stage complete)
+            // This ensures V3 check uses V2-complete senses from database
+            const refreshedSensesAfterV2 = await fetchSenses(token);
+            meanings = refreshedSensesAfterV2 || meanings; // Use refreshed V2-complete senses
+            
             // ⚠️ CRITICAL: Update UI immediately if this is the currently selected token
             if (selectedToken === token) {
-              const refreshedSenses = await fetchSenses(token);
-              const validatedRefreshedSenses = validateSenses(refreshedSenses);
+              const validatedRefreshedSenses = validateSenses(refreshedSensesAfterV2);
               setSenses(validatedRefreshedSenses);
               console.log(`${logPrefix} ✓ UI updated with V2 enriched senses for "${token}"`);
             }
           } else {
             console.warn(`${logPrefix} ⚠ V2 enrichment returned empty for "${token}"`);
+            // ⚠️ CRITICAL: V2 is a strict gate stage - if enrichment returns empty, we cannot proceed
+            throw new Error(`V2 enrichment returned empty for "${token}". V2 is a required gate stage and must complete before proceeding.`);
           }
         } catch (error) {
-          console.warn(`${logPrefix} ⚠ V2 enrichment failed for "${token}":`, error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`${logPrefix} ✗ V2 enrichment failed for "${token}":`, error);
+          // ⚠️ CRITICAL: V2 is a strict gate stage - if enrichment fails, we cannot proceed
+          throw new Error(`V2 enrichment failed for "${token}": ${errorMessage}. V2 is a required gate stage and must complete before proceeding.`);
+        }
+      }
+      
+      // ⚠️ PIPELINE EVOLUTION: V3 is the next natural evolution after V2
+      // Check if V3 enrichment is needed (only if V2 is complete - natural progression)
+      // This is part of the natural pipeline flow: V1 → V2 → V3
+      const v2EnrichmentStillNeeded = meanings.length > 0 && needsV2Enrichment(meanings);
+      const needsV3Check = !v2EnrichmentStillNeeded && meanings.length > 0 && needsV3Enrichment(meanings as MeaningThV2[]);
+      
+      // #region agent log - V3 ENRICHMENT DECISION (natural pipeline evolution)
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 ENRICHMENT DECISION',data:{token,meaningsCount:meanings.length,needsV3Check,v2Complete:!v2EnrichmentStillNeeded,meaningsSample:meanings.slice(0,2).map((m:any)=>({id:m.id?.toString(),hasLabelEng:!!m.label_eng,hasV2Fields:!!(m.pos_th || m.pos_eng || m.definition_eng)})),finalG2P:!!finalG2P,finalPhonetic:!!finalPhonetic},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+      // #endregion
+      
+      // Natural pipeline evolution: V3 happens after V2 completes
+      if (needsV3Check) {
+        console.log(`${logPrefix} Pipeline evolution: enriching meanings to V3 (label_eng) for "${token}"...`);
+        
+        // #region agent log - V3 ENRICHMENT START (natural pipeline evolution)
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 ENRICHMENT START',data:{token,meaningsCount:meanings.length,meaningsToEnrich:meanings.map((m:any)=>({id:m.id?.toString(),definitionTh:m.definition_th?.substring(0,30),posTh:m.pos_th,posEng:m.pos_eng,definitionEng:m.definition_eng?.substring(0,30),hasLabelEng:!!m.label_eng})),context:{textTh:token,fullThaiText:subtitle?.thai?.substring(0,50),hasG2P:!!finalG2P,hasPhonetic:!!finalPhonetic}},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+        // #endregion
+        
+        try {
+          const enrichedMeaningsV3 = await enrichMeaningsWithGPTV3(meanings as MeaningThV2[], {
+            textTh: token,
+            fullThaiText: subtitle?.thai || undefined,
+            g2p: finalG2P || undefined,
+            phonetic_en: finalPhonetic || undefined,
+          });
+          
+          // #region agent log - V3 ENRICHMENT RESULT
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 ENRICHMENT RESULT',data:{token,enrichedCount:enrichedMeaningsV3?.length || 0,enrichedMeanings:enrichedMeaningsV3?.map((m:any)=>({id:m.id?.toString(),labelEng:m.label_eng,hasLabelEng:!!m.label_eng,definitionTh:m.definition_th?.substring(0,30)})),success:!!(enrichedMeaningsV3 && enrichedMeaningsV3.length > 0)},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+          // #endregion
+          
+          if (enrichedMeaningsV3 && enrichedMeaningsV3.length > 0) {
+            console.log(`${logPrefix} ✓ Enriched ${enrichedMeaningsV3.length} meaning(s) with V3 fields for "${token}"`);
+            meanings = enrichedMeaningsV3; // Use enriched meanings
+            
+            // #region agent log - V3 MEANINGS UPDATED
+            fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 MEANINGS UPDATED',data:{token,meaningsCount:meanings.length,meaningsWithLabelEng:meanings.filter((m:any)=>!!m.label_eng).length,selectedTokenMatches:selectedToken === token},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+            // #endregion
+            
+            // ⚠️ CRITICAL: Update UI immediately if this is the currently selected token
+            if (selectedToken === token) {
+              // #region agent log - V3 UI UPDATE START
+              fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 UI UPDATE START',data:{token,selectedToken},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+              // #endregion
+              const refreshedSenses = await fetchSenses(token);
+              const validatedRefreshedSenses = validateSenses(refreshedSenses);
+              setSenses(validatedRefreshedSenses);
+              // #region agent log - V3 UI UPDATE COMPLETE
+              fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 UI UPDATE COMPLETE',data:{token,refreshedSensesCount:refreshedSenses?.length || 0,validatedSensesCount:validatedRefreshedSenses.length},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+              // #endregion
+              console.log(`${logPrefix} ✓ UI updated with V3 enriched senses for "${token}"`);
+            }
+          } else {
+            // #region agent log - V3 ENRICHMENT EMPTY RESULT
+            fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 ENRICHMENT EMPTY RESULT',data:{token,enrichedMeaningsV3:enrichedMeaningsV3?.length || 0},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+            // #endregion
+            console.warn(`${logPrefix} ⚠ V3 enrichment returned empty for "${token}"`);
+          }
+        } catch (error) {
+          // #region agent log - V3 ENRICHMENT ERROR
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 ENRICHMENT ERROR',data:{token,errorMessage:error instanceof Error ? error.message : String(error),errorStack:error instanceof Error ? error.stack?.substring(0,200) : undefined},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+          // #endregion
+          console.warn(`${logPrefix} ⚠ V3 enrichment failed for "${token}":`, error);
           // Continue with existing meanings - don't stop processing
         }
       }
@@ -919,15 +1179,16 @@ export function SupabaseInspector() {
           
           // Extract tokens array from subtitle
           const tokensArray = subtitle?.tokens_th && typeof subtitle.tokens_th === 'object' && 'tokens' in subtitle.tokens_th
-            ? (subtitle.tokens_th as { tokens?: string[] }).tokens || []
+            ? (subtitle.tokens_th as { tokens?: unknown[] }).tokens || []
             : [];
           
-          // Find word position in tokens array
-          const wordPosition = tokensArray.indexOf(token);
+          // Extract token texts and find word position
+          const tokenTexts = tokensArray.map(t => getTokenText(t)).filter((t): t is string => t !== null);
+          const wordPosition = tokenTexts.indexOf(token);
           
           const gptContext: GPTMeaningContext = {
             fullThaiText: subtitle?.thai || '',
-            allTokens: tokensArray,
+            allTokens: tokenTexts,
             wordPosition: wordPosition >= 0 ? wordPosition : undefined,
             g2p: finalG2P || undefined,
             phonetic_en: finalPhonetic || undefined,
@@ -997,19 +1258,39 @@ export function SupabaseInspector() {
 
       // Save senses separately if we have them
       if (meanings.length > 0) {
-        const sensesToSave = meanings.map((meaning) => ({
-          id: meaning.id,
-          definition_th: meaning.definition_th,
-          source: meaning.source,
-          created_at: meaning.created_at,
-          word_th_id: meaning.word_th_id || token,
-          // Add V2 fields if present
-          ...(meaning.pos_th && { pos_th: meaning.pos_th }),
-          ...(meaning.pos_eng && { pos_eng: meaning.pos_eng }),
-          ...(meaning.definition_eng && { definition_eng: meaning.definition_eng }),
+        const sensesToSave = meanings.map((meaning) => {
+          const meaningAny = meaning as any;
+          return {
+            id: meaning.id,
+            definition_th: meaning.definition_th,
+            source: meaning.source,
+            created_at: meaning.created_at,
+            word_th_id: meaning.word_th_id || token,
+            // Add V2 fields if present
+            ...(meaningAny.pos_th && { pos_th: meaningAny.pos_th }),
+            ...(meaningAny.pos_eng && { pos_eng: meaningAny.pos_eng }),
+            ...(meaningAny.definition_eng && { definition_eng: meaningAny.definition_eng }),
+            // Add V3 fields if present
+            ...(meaningAny.label_eng && { label_eng: meaningAny.label_eng }),
+          };
+        });
+        
+        // #region agent log - V3 SAVE SENSES
+        const sensesWithLabelEngCount = sensesToSave.filter((s: any) => !!s.label_eng).length;
+        const sensesToSaveSample = sensesToSave.slice(0, 3).map((s: any) => ({
+          id: s.id?.toString(),
+          hasLabelEng: !!s.label_eng,
+          labelEng: s.label_eng,
+          hasV2Fields: !!(s.pos_th || s.pos_eng || s.definition_eng)
         }));
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 SAVE SENSES',data:{token,sensesToSaveCount:sensesToSave.length,sensesWithLabelEngCount,sensesToSaveSample},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+        // #endregion
         
         await saveSenses(sensesToSave, token);
+        
+        // #region agent log - V3 SAVE SENSES COMPLETE
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:processSingleToken',message:'V3 SAVE SENSES COMPLETE',data:{token,savedCount:sensesToSave.length},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+        // #endregion
         console.log(`${logPrefix} ✓ Saved ${sensesToSave.length} senses for "${token}"`);
         
         // ⚠️ CRITICAL: Update UI immediately after saving if this is the currently selected token
@@ -1033,14 +1314,18 @@ export function SupabaseInspector() {
         }
         
         // Validate each saved sense with Zod schema
-        // ⚠️ V1/V2 COMPATIBILITY: Use V2 schema which accepts both V1 and V2 data
+        // ⚠️ V1/V2/V3 COMPATIBILITY: Check V3 first (most complete), then V2, then V1
         const invalidSenses = savedSenses.filter(sense => {
+          const v3Validation = meaningThSchemaV3.safeParse(sense);
+          if (v3Validation.success) {
+            return false; // Valid V3
+          }
           const v2Validation = meaningThSchemaV2.safeParse(sense);
           if (v2Validation.success) {
-            return false; // Valid
+            return false; // Valid V2
           }
           const v1Validation = meaningThSchema.safeParse(sense);
-          return !v1Validation.success;
+          return !v1Validation.success; // Invalid if none match
         });
         
         if (invalidSenses.length > 0) {
@@ -1063,7 +1348,48 @@ export function SupabaseInspector() {
 
       // ⚠️ PROCESSING CONTRACT: Final validation - ensure complete token state matches contract
       const finalWord = await fetchWord(token);
-      const finalSenses = await fetchSenses(token);
+      let finalSenses = await fetchSenses(token);
+      
+      // ⚠️ CRITICAL: Check if V2 enrichment is needed before final validation (gate stage)
+      // If V2 is incomplete, enrich it first before validating
+      if (finalSenses && finalSenses.length > 0 && needsV2Enrichment(finalSenses)) {
+        console.log(`${logPrefix} V2 enrichment needed before final validation - enriching "${token}"...`);
+        try {
+          const enrichedMeaningsV2 = await enrichMeaningsWithGPT(finalSenses, {
+            textTh: token,
+            fullThaiText: subtitle?.thai || undefined,
+            g2p: finalG2P || undefined,
+            phonetic_en: finalPhonetic || undefined,
+          });
+          
+          if (enrichedMeaningsV2 && enrichedMeaningsV2.length > 0) {
+            const sensesToSaveV2 = enrichedMeaningsV2.map((meaning) => {
+              const meaningAny = meaning as any;
+              return {
+                id: meaning.id,
+                definition_th: meaning.definition_th,
+                source: meaning.source,
+                created_at: meaning.created_at,
+                word_th_id: meaning.word_th_id || token,
+                ...(meaningAny.pos_th && { pos_th: meaningAny.pos_th }),
+                ...(meaningAny.pos_eng && { pos_eng: meaningAny.pos_eng }),
+                ...(meaningAny.definition_eng && { definition_eng: meaningAny.definition_eng }),
+              };
+            });
+            await saveSenses(sensesToSaveV2, token);
+            finalSenses = await fetchSenses(token); // Refetch after V2 enrichment
+            console.log(`${logPrefix} ✓ V2 enrichment completed before final validation for "${token}"`);
+          } else {
+            // ⚠️ CRITICAL: V2 is a strict gate stage - if enrichment returns empty, we cannot proceed
+            throw new Error(`V2 enrichment returned empty for "${token}" before final validation. V2 is a required gate stage and must complete before proceeding.`);
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`${logPrefix} ✗ V2 enrichment failed before final validation for "${token}":`, error);
+          // ⚠️ CRITICAL: V2 is a strict gate stage - if enrichment fails, we cannot proceed
+          throw new Error(`V2 enrichment failed for "${token}": ${errorMessage}. V2 is a required gate stage and must complete before final validation.`);
+        }
+      }
       
       // Validate complete token contract (word + senses together) - final check after processing
       const finalTokenContractValidation = validateCompleteToken(token, finalWord, finalSenses);
@@ -1153,15 +1479,19 @@ export function SupabaseInspector() {
       // STEP 1: Clean tokens and migrate word data if needed
       console.log(`[Process Current Sub] Processing subtitle ${currentSubtitle.id}`);
       const originalTokens = currentSubtitle.tokens_th.tokens;
-      const cleanedTokens: string[] = [];
+      const cleanedTokens: Array<{t: string, meaning_id?: bigint}> = [];
       const tokenMigrations: Array<{oldToken: string, newToken: string}> = [];
 
-      for (const token of originalTokens) {
-        if (!token || !token.trim()) {
+      for (const tokenItem of originalTokens) {
+        const tokenText = getTokenText(tokenItem);
+        if (!tokenText) {
           continue;
         }
         
-        const trimmedToken = token.trim();
+        const trimmedToken = tokenText;
+        const meaningId = tokenItem && typeof tokenItem === 'object' && 'meaning_id' in tokenItem 
+          ? (tokenItem as any).meaning_id 
+          : undefined;
         
         if (hasInvalidPunctuation(trimmedToken)) {
           const cleanedToken = cleanToken(trimmedToken);
@@ -1212,7 +1542,7 @@ export function SupabaseInspector() {
               // #endregion
             }
             
-            cleanedTokens.push(cleanedToken);
+            cleanedTokens.push({ t: cleanedToken, meaning_id: meaningId });
           } else {
             console.warn(`[Process Current Sub] Token "${trimmedToken}" cleaned to empty string - skipping`);
             // #region agent log
@@ -1220,7 +1550,7 @@ export function SupabaseInspector() {
             // #endregion
           }
         } else {
-          cleanedTokens.push(trimmedToken);
+          cleanedTokens.push({ t: trimmedToken, meaning_id: meaningId });
         }
       }
 
@@ -1261,7 +1591,14 @@ export function SupabaseInspector() {
       }
 
       // STEP 2: Process cleaned tokens through full pipeline using shared logic
-      const uniqueTokens = new Set(cleanedTokens.filter(t => t && t.length > 0));
+      // Extract unique token texts from cleaned token objects (same pattern as Process All)
+      const uniqueTokens = new Set<string>();
+      for (const tokenItem of cleanedTokens) {
+        const tokenText = getTokenText(tokenItem);
+        if (tokenText) {
+          uniqueTokens.add(tokenText);
+        }
+      }
       console.log(`[Process Current Sub] === Processing ${uniqueTokens.size} Unique Tokens ===`);
 
       const tokensArray = Array.from(uniqueTokens);
@@ -1328,7 +1665,7 @@ export function SupabaseInspector() {
       
       if (selectedToken && finalRefreshedSubtitles.length > 0) {
         const subtitleIndex = finalRefreshedSubtitles.findIndex(sub => 
-          sub.tokens_th?.tokens?.includes(selectedToken)
+          tokensInclude(sub.tokens_th?.tokens, selectedToken)
         );
         console.log('[Process Current Sub] Token-based subtitle lookup:', {
           selectedToken,
@@ -1553,9 +1890,10 @@ export function SupabaseInspector() {
       const uniqueTokens = new Set<string>();
       for (const subtitle of subtitles) {
         if (subtitle.tokens_th?.tokens) {
-          for (const token of subtitle.tokens_th.tokens) {
-            if (token && token.trim()) {
-              uniqueTokens.add(token.trim());
+          for (const tokenItem of subtitle.tokens_th.tokens) {
+            const tokenText = getTokenText(tokenItem);
+            if (tokenText) {
+              uniqueTokens.add(tokenText);
             }
           }
         }
@@ -1570,7 +1908,7 @@ export function SupabaseInspector() {
         
         // Find subtitle containing this token for visual feedback
         const subtitleIndex = subtitles.findIndex(sub => 
-          sub.tokens_th?.tokens?.includes(token)
+          tokensInclude(sub.tokens_th?.tokens, token)
         );
         if (subtitleIndex >= 0) {
           setCurrentSubtitleIndex(subtitleIndex);
@@ -1695,9 +2033,10 @@ export function SupabaseInspector() {
       const uniqueTokens = new Set<string>();
       for (const subtitle of subtitles) {
         if (subtitle.tokens_th?.tokens) {
-          for (const token of subtitle.tokens_th.tokens) {
-            if (token && token.trim()) {
-              uniqueTokens.add(token.trim());
+          for (const tokenItem of subtitle.tokens_th.tokens) {
+            const tokenText = getTokenText(tokenItem);
+            if (tokenText) {
+              uniqueTokens.add(tokenText);
             }
           }
         }
@@ -1712,7 +2051,7 @@ export function SupabaseInspector() {
         
         // Find subtitle containing this token for visual feedback
         const subtitleIndex = subtitles.findIndex(sub => 
-          sub.tokens_th?.tokens?.includes(token)
+          tokensInclude(sub.tokens_th?.tokens, token)
         );
         if (subtitleIndex >= 0) {
           setCurrentSubtitleIndex(subtitleIndex);
@@ -1832,16 +2171,43 @@ export function SupabaseInspector() {
   const handleProcessAll = async () => {
     setError(null); // Clear previous errors
     
+    // #region agent log - PROCESS ALL ENTRY
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL ENTRY',data:{processingSubtitle,processingG2P,processingPhonetic,processingAll,subtitlesLength:subtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+    // #endregion
+    
     if (processingSubtitle || processingG2P || processingPhonetic || processingAll || subtitles.length === 0) {
+      // #region agent log - PROCESS ALL BLOCKED
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL BLOCKED',data:{processingSubtitle,processingG2P,processingPhonetic,processingAll,subtitlesLength:subtitles.length,reason:processingSubtitle ? 'processingSubtitle' : processingG2P ? 'processingG2P' : processingPhonetic ? 'processingPhonetic' : processingAll ? 'processingAll' : 'no_subtitles'},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       return;
     }
 
     setProcessingAll(true);
+    // #region agent log - PROCESS ALL STARTING
+    fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL STARTING',data:{subtitlesLength:subtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+    // #endregion
     console.log('[Process All] ===== STARTING COMPLETE PROCESSING WORKFLOW =====');
     console.log('[Process All] Subtitles to process:', subtitles.length);
 
     try {
-      const workflow = getValidatedProcessingOrder();
+      // #region agent log - PROCESS ALL TRY BLOCK ENTERED
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TRY BLOCK ENTERED',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
+      // #region agent log - PROCESS ALL GETTING WORKFLOW
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL GETTING WORKFLOW',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
+      let workflow;
+      try {
+        workflow = getValidatedProcessingOrder();
+      } catch (workflowError) {
+        // #region agent log - PROCESS ALL WORKFLOW ERROR
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL WORKFLOW ERROR',data:{errorMessage:workflowError instanceof Error ? workflowError.message : String(workflowError),errorStack:workflowError instanceof Error ? workflowError.stack?.substring(0,500) : undefined},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+        // #endregion
+        throw workflowError;
+      }
+      // #region agent log - PROCESS ALL WORKFLOW RETRIEVED
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL WORKFLOW RETRIEVED',data:{workflowSteps:workflow.steps?.map((s:any)=>s.name) || []},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       let processedSubtitleCount = 0;
       let skippedSubtitleCount = 0;
       let processedTokenCount = 0;
@@ -1849,10 +2215,16 @@ export function SupabaseInspector() {
       const skipReasons: Record<string, number> = {};
 
       // STEP 1: Process all subtitles (tokenize)
+      // #region agent log - PROCESS ALL STEP 1 START
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL STEP 1 START',data:{subtitlesToProcess:subtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       console.log('[Process All] === STEP 1: Tokenizing Subtitles ===');
 
       const processedSubtitles: SubtitleTh[] = [];
       for (let i = 0; i < subtitles.length; i++) {
+        // #region agent log - PROCESS ALL PROCESSING SUBTITLE
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL PROCESSING SUBTITLE',data:{subtitleIndex:i,subtitleId:subtitles[i]?.id,totalSubtitles:subtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+        // #endregion
         const subtitle = subtitles[i];
         setCurrentSubtitleIndex(i);
         
@@ -1924,12 +2296,18 @@ export function SupabaseInspector() {
       }
 
       // Save updated subtitles
+      // #region agent log - PROCESS ALL AFTER SUBTITLE LOOP
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL AFTER SUBTITLE LOOP',data:{processedSubtitleCount,skippedSubtitleCount,processedSubtitlesLength:processedSubtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       if (processedSubtitleCount > 0) {
         await saveSubtitlesBatch(processedSubtitles);
         console.log(`[Process All] Saved ${processedSubtitleCount} tokenized subtitles`);
       }
 
       // STEP 2: Extract unique tokens and validate them
+      // #region agent log - PROCESS ALL STEP 2 START
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL STEP 2 START',data:{processedSubtitlesLength:processedSubtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       const uniqueTokens = new Set<string>();
       const invalidTokens: Array<{token: string, reason: string}> = [];
       
@@ -1940,34 +2318,68 @@ export function SupabaseInspector() {
       };
       
       // Track tokens per subtitle for sync debugging
-      const tokensBySubtitle = new Map<string, string[]>(); // subtitleId -> tokens[]
+      const tokensBySubtitle = new Map<string, Array<{t: string, meaning_id?: bigint}>>(); // subtitleId -> tokens[]
       
-      for (const subtitle of processedSubtitles) {
+      // #region agent log - PROCESS ALL TOKEN EXTRACTION LOOP START
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION LOOP START',data:{processedSubtitlesLength:processedSubtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
+      try {
+        for (const subtitle of processedSubtitles) {
+        // #region agent log - PROCESS ALL TOKEN EXTRACTION LOOP ITERATION
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION LOOP ITERATION',data:{subtitleId:subtitle.id,hasTokensTh:!!subtitle.tokens_th,hasTokens:!!subtitle.tokens_th?.tokens,tokensLength:subtitle.tokens_th?.tokens?.length || 0},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+        // #endregion
         if (subtitle.tokens_th?.tokens) {
-          const subtitleTokens: string[] = [];
-          for (const token of subtitle.tokens_th.tokens) {
-            if (token && token.trim()) {
-              const trimmedToken = token.trim();
-              // Validate token - reject if it contains punctuation
-              if (hasInvalidPunctuation(trimmedToken)) {
-                invalidTokens.push({token: trimmedToken, reason: 'contains_punctuation', subtitleId: subtitle.id});
-                // #region agent log - TOKEN SYNC
-                fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'TOKEN SYNC - Invalid token skipped',data:{token:trimmedToken,subtitleId:subtitle.id,reason:'contains_punctuation',subtitleTokens:subtitle.tokens_th.tokens},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'TOKEN_SYNC'})}).catch(()=>{});
-                // #endregion
-                console.warn(`[Process All] ⚠ Invalid token detected: "${trimmedToken}" contains punctuation - skipping`);
-                continue; // Skip invalid tokens
-              }
-              uniqueTokens.add(trimmedToken);
-              subtitleTokens.push(trimmedToken);
+          const subtitleTokens: Array<{t: string, meaning_id?: bigint}> = [];
+          // #region agent log - PROCESS ALL TOKEN EXTRACTION INNER LOOP START
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION INNER LOOP START',data:{subtitleId:subtitle.id,tokensCount:subtitle.tokens_th.tokens.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+          // #endregion
+          for (const tokenItem of subtitle.tokens_th.tokens) {
+            try {
+              const tokenText = getTokenText(tokenItem);
+              if (!tokenText) continue;
+            
+            const meaningId = tokenItem && typeof tokenItem === 'object' && 'meaning_id' in tokenItem 
+              ? (tokenItem as any).meaning_id 
+              : undefined;
+            
+            // Validate token - reject if it contains punctuation
+            if (hasInvalidPunctuation(tokenText)) {
+              invalidTokens.push({token: tokenText, reason: 'contains_punctuation', subtitleId: subtitle.id});
+              // #region agent log - TOKEN SYNC
+              const subtitleTokensForLog = subtitle.tokens_th.tokens.map((t: any) => {
+                if (typeof t === 'string') return t;
+                if (t && typeof t === 'object') return { t: t.t, meaning_id: t.meaning_id?.toString() };
+                return t;
+              });
+              fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'TOKEN SYNC - Invalid token skipped',data:{token:tokenText,subtitleId:subtitle.id,reason:'contains_punctuation',subtitleTokens:subtitleTokensForLog},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'TOKEN_SYNC'})}).catch(()=>{});
+              // #endregion
+              console.warn(`[Process All] ⚠ Invalid token detected: "${tokenText}" contains punctuation - skipping`);
+              continue; // Skip invalid tokens
+            }
+            uniqueTokens.add(tokenText);
+            subtitleTokens.push({ t: tokenText, meaning_id: meaningId });
+            } catch (tokenItemError) {
+              // #region agent log - PROCESS ALL TOKEN EXTRACTION TOKEN ITEM ERROR
+              fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION TOKEN ITEM ERROR',data:{subtitleId:subtitle.id,tokenItem,tokenItemType:typeof tokenItem,errorMessage:tokenItemError instanceof Error ? tokenItemError.message : String(tokenItemError)},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+              // #endregion
+              console.error(`[Process All] Error processing token item in subtitle ${subtitle.id}:`, tokenItemError);
+              continue; // Skip this token item and continue
             }
           }
           if (subtitleTokens.length > 0) {
             tokensBySubtitle.set(subtitle.id, subtitleTokens);
             // #region agent log - TOKEN SYNC
-            fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'TOKEN SYNC - Subtitle tokens extracted',data:{subtitleId:subtitle.id,tokenCount:subtitleTokens.length,tokens:subtitleTokens,originalTokensCount:subtitle.tokens_th.tokens.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'TOKEN_SYNC'})}).catch(()=>{});
+            const tokensForLog = subtitleTokens.map(t => ({ t: t.t, meaning_id: t.meaning_id?.toString() }));
+            fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'TOKEN SYNC - Subtitle tokens extracted',data:{subtitleId:subtitle.id,tokenCount:subtitleTokens.length,tokens:tokensForLog,originalTokensCount:subtitle.tokens_th.tokens.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'TOKEN_SYNC'})}).catch(()=>{});
             // #endregion
           }
         }
+      }
+      } catch (tokenExtractionError) {
+        // #region agent log - PROCESS ALL TOKEN EXTRACTION ERROR
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION ERROR',data:{errorMessage:tokenExtractionError instanceof Error ? tokenExtractionError.message : String(tokenExtractionError),errorStack:tokenExtractionError instanceof Error ? tokenExtractionError.stack?.substring(0,500) : undefined},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+        // #endregion
+        throw tokenExtractionError;
       }
       
       if (invalidTokens.length > 0) {
@@ -1975,10 +2387,16 @@ export function SupabaseInspector() {
         console.warn(`[Process All] Invalid tokens:`, invalidTokens.map(t => t.token));
       }
       
+      // #region agent log - PROCESS ALL TOKEN EXTRACTION COMPLETE
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL TOKEN EXTRACTION COMPLETE',data:{uniqueTokensCount:uniqueTokens.size,invalidTokensCount:invalidTokens.length,processedSubtitlesLength:processedSubtitles.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       console.log(`[Process All] === STEP 2: Processing ${uniqueTokens.size} Unique Tokens ===`);
 
       // STEP 3: Process each token (G2P → phonetic → ORST → GPT normalize)
       const tokensArray = Array.from(uniqueTokens);
+      // #region agent log - PROCESS ALL STEP 3 START
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL STEP 3 START',data:{tokensArrayLength:tokensArray.length},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       
       // #region agent log - TOKEN SYNC
       fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'TOKEN SYNC - Starting token processing',data:{totalUniqueTokens:tokensArray.length,tokensArray:tokensArray.slice(0,20),subtitleCount:processedSubtitles.length,tokensBySubtitleCount:tokensBySubtitle.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'TOKEN_SYNC'})}).catch(()=>{});
@@ -1990,7 +2408,7 @@ export function SupabaseInspector() {
         // Find subtitle containing this token for visual feedback
         // CRITICAL: Use full subtitles array (not processedSubtitles) to match UI display
         const subtitleIndex = subtitles.findIndex(sub => 
-          sub.tokens_th?.tokens?.includes(token)
+          tokensInclude(sub.tokens_th?.tokens, token)
         );
         
         // Find which subtitles contain this token (for sync debugging)
@@ -2011,6 +2429,10 @@ export function SupabaseInspector() {
           // Use shared token processing logic - same as Process Current Sub
           const currentSubtitle = subtitleIndex >= 0 ? processedSubtitles.find(sub => subtitles.findIndex(s => s.id === sub.id) === subtitleIndex) : null;
           
+          // #region agent log - V3 PROCESS ALL CALLING PROCESS SINGLE TOKEN
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'V3 PROCESS ALL CALLING PROCESS SINGLE TOKEN',data:{token,tokenIndex:i+1,totalTokens:tokensArray.length,subtitleIndex:subtitleIndex >= 0 ? subtitleIndex : null,hasCurrentSubtitle:!!currentSubtitle},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+          // #endregion
+          
           const result = await processSingleToken(
             token,
             { subtitle: currentSubtitle || null, subtitleIndex: subtitleIndex >= 0 ? subtitleIndex : null },
@@ -2028,6 +2450,10 @@ export function SupabaseInspector() {
               }
             }
           );
+          
+          // #region agent log - V3 PROCESS ALL PROCESS SINGLE TOKEN RESULT
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'V3 PROCESS ALL PROCESS SINGLE TOKEN RESULT',data:{token,tokenIndex:i+1,totalTokens:tokensArray.length,resultProcessed:result.processed,resultSkipped:result.skipped},timestamp:Date.now(),runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+          // #endregion
 
           if (result.skipped) {
             skippedTokenCount++;
@@ -2058,6 +2484,9 @@ export function SupabaseInspector() {
       // Final summary with detailed skip statistics
       const totalTokens = processedTokenCount + skippedTokenCount;
       const skipRate = totalTokens > 0 ? ((skippedTokenCount / totalTokens) * 100).toFixed(1) : '0';
+      // #region agent log - PROCESS ALL COMPLETE
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL COMPLETE',data:{processedSubtitleCount,skippedSubtitleCount,processedTokenCount,skippedTokenCount,totalTokens,skipRate,skipReasons},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
+      // #endregion
       console.log('[Process All] ===== PROCESSING COMPLETE =====');
       console.log(`[Process All] Subtitles: ${processedSubtitleCount} processed, ${skippedSubtitleCount} skipped`);
       console.log(`[Process All] Tokens: ${processedTokenCount} processed, ${skippedTokenCount} skipped (${skipRate}% skip rate)`);
@@ -2079,7 +2508,19 @@ export function SupabaseInspector() {
         }
         
         if (subtitle.tokens_th?.tokens && subtitle.tokens_th.tokens.length > 0) {
-          const subtitleTokens = subtitle.tokens_th.tokens.map(t => t.trim()).filter(t => t);
+          // Handle both formats: array of strings OR array of objects with {t, meaning_id}
+          const subtitleTokens: string[] = [];
+          if (subtitle.tokens_th?.tokens && Array.isArray(subtitle.tokens_th.tokens)) {
+            for (const tokenItem of subtitle.tokens_th.tokens) {
+              if (typeof tokenItem === 'string') {
+                const trimmed = tokenItem.trim();
+                if (trimmed) subtitleTokens.push(trimmed);
+              } else if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+                const tokenText = (tokenItem as any).t?.trim();
+                if (tokenText) subtitleTokens.push(tokenText);
+              }
+            }
+          }
           const wordsInSubtitle = new Set<string>();
           const fetchErrors: string[] = [];
           
@@ -2163,8 +2604,8 @@ export function SupabaseInspector() {
       setError(`Process All failed: ${errorMessage}`);
       alert(`Process All failed: ${errorMessage}`);
     } finally {
-      // #region agent log
-      // Skip logging - routine operation
+      // #region agent log - PROCESS ALL FINALLY BLOCK
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupabaseInspector.tsx:handleProcessAll',message:'PROCESS ALL FINALLY BLOCK',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'PROCESS_ALL'})}).catch(()=>{});
       // #endregion
       setProcessingAll(false);
     }
@@ -2211,9 +2652,40 @@ export function SupabaseInspector() {
             </h2>
             {subtitles.length > 0 && (
               <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-600">
-                  {currentSubtitleIndex + 1} of {subtitles.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max={subtitles.length}
+                    value={subtitleInputValue || currentSubtitleIndex + 1}
+                    onChange={(e) => setSubtitleInputValue(e.target.value)}
+                    onBlur={(e) => {
+                      const numValue = parseInt(e.target.value, 10);
+                      if (!isNaN(numValue) && numValue >= 1 && numValue <= subtitles.length) {
+                        setCurrentSubtitleIndex(numValue - 1);
+                        setSubtitleInputValue('');
+                      } else {
+                        setSubtitleInputValue('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const numValue = parseInt(subtitleInputValue, 10);
+                        if (!isNaN(numValue) && numValue >= 1 && numValue <= subtitles.length) {
+                          setCurrentSubtitleIndex(numValue - 1);
+                          setSubtitleInputValue('');
+                        } else {
+                          setSubtitleInputValue('');
+                        }
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="w-16 px-2 py-1 text-sm text-gray-900 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-600">
+                    of {subtitles.length}
+                  </span>
+                </div>
                 <div className="flex gap-2">
                   {/* #region agent log - BUTTON RENDER CHECK */}
                   {(() => {
@@ -2286,14 +2758,15 @@ export function SupabaseInspector() {
                 const subtitle = subtitles[currentSubtitleIndex];
                 const subtitleTokens = subtitle?.tokens_th?.tokens || [];
                 if (subtitleTokens.length === 0) return 'border-gray-300';
-                // Check if all tokens have complete word data
-                const tokenCompleteness = subtitleTokens.map((token: string) => ({
+                // Extract token texts and check if all tokens have complete word data
+                const tokenTexts = subtitleTokens.map(t => getTokenText(t)).filter((t): t is string => t !== null);
+                const tokenCompleteness = tokenTexts.map((token: string) => ({
                   token,
                   inMap: wordExistsMap.has(token),
                   value: wordExistsMap.get(token),
                   isComplete: wordExistsMap.get(token) === true
                 }));
-                const allTokensComplete = subtitleTokens.every((token: string) => {
+                const allTokensComplete = tokenTexts.every((token: string) => {
                   return wordExistsMap.get(token) === true;
                 });
                 
@@ -2342,7 +2815,7 @@ export function SupabaseInspector() {
                       <div>
                         <span className="text-xs font-medium text-gray-600">Tokens:</span>
                         <p className="text-sm mt-1 text-gray-800 font-mono">
-                          {subtitle.tokens_th.tokens.join(', ')}
+                          {subtitle.tokens_th.tokens.map(t => getTokenText(t)).filter((t): t is string => t !== null).join(', ')}
                         </p>
                       </div>
                     )}
@@ -2365,9 +2838,27 @@ export function SupabaseInspector() {
             const subs = subtitles;
             const currentSubtitle = subs[index];
             const rawTokens = currentSubtitle?.tokens_th?.tokens;
-            const tokens = (!rawTokens || !Array.isArray(rawTokens)) ? [] : rawTokens
-              .map((token: string) => token?.trim())
-              .filter((token: string) => token && token.length > 0);
+            // Handle both formats: array of strings OR array of objects with {t, meaning_id}
+            const tokens: string[] = [];
+            const tokenMeaningIds: Map<string, bigint | number> = new Map();
+            
+            if (rawTokens && Array.isArray(rawTokens)) {
+              for (const tokenItem of rawTokens) {
+                if (typeof tokenItem === 'string') {
+                  const trimmed = tokenItem.trim();
+                  if (trimmed) tokens.push(trimmed);
+                } else if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+                  const tokenText = (tokenItem as any).t?.trim();
+                  const meaningId = (tokenItem as any).meaning_id;
+                  if (tokenText) {
+                    tokens.push(tokenText);
+                    if (meaningId !== undefined && meaningId !== null) {
+                      tokenMeaningIds.set(tokenText, meaningId);
+                    }
+                  }
+                }
+              }
+            }
             
             // #region agent log
             // Skip logging - tokens computed correctly from subtitle source of truth
@@ -2394,6 +2885,20 @@ export function SupabaseInspector() {
                   
                   
                   
+                  // Get label_eng from subtitle meaning_id (if token has been selected/assigned a meaning)
+                  const labelFromSubtitle = tokenLabelMap.get(token);
+                  
+                  // Also check if this is the currently selected token with a selected meaning
+                  const selectedSense = isSelected && selectedMeaning 
+                    ? senses.find(s => s.id?.toString() === selectedMeaning.id?.toString())
+                    : null;
+                  const labelFromSelected = selectedSense ? (selectedSense as any)?.label_eng : null;
+                  
+                  // Prefer label from subtitle meaning_id (token has been assigned), fallback to selected meaning
+                  const labelEng = labelFromSubtitle || labelFromSelected;
+                  const hasLabel = labelEng && typeof labelEng === 'string' && labelEng.trim().length > 0;
+                  const hasMeaningAssigned = !!labelFromSubtitle; // Token has meaning_id in subtitle
+                  
                   return (
                     <button
                       key={token}
@@ -2407,10 +2912,18 @@ export function SupabaseInspector() {
                           : hasCompleteWordData
                           ? 'border-green-500 text-gray-600 hover:text-gray-800 hover:border-green-600'
                           : 'border-red-500 text-gray-600 hover:text-gray-800 hover:border-red-600'
-                      }`}
+                      } ${hasMeaningAssigned ? 'ring-1 ring-green-400' : ''}`}
                       title={hasCompleteWordData ? 'Word has complete data (id, word_th, g2p/phonetic_en)' : 'Word missing or incomplete data'}
                     >
-                      <span className="font-mono text-base">{token}</span>
+                      <div className="flex flex-col items-center gap-0.5">
+                        {hasLabel && (
+                          <span className="text-xs text-gray-700 font-semibold leading-tight">{labelEng}</span>
+                        )}
+                        <span className="font-mono text-base leading-tight">{token}</span>
+                        {hasMeaningAssigned && !hasLabel && (
+                          <span className="text-[8px] text-green-600 leading-tight">✓</span>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -2510,36 +3023,60 @@ export function SupabaseInspector() {
                       // Green = normalized (source !== 'orst' or source === 'gpt'), Red = only ORST or missing source
                       const isNormalized = sense.source && sense.source !== 'orst' && sense.source !== 'ORST';
                       // Check if V2 fields are present (must be non-empty strings, not just truthy)
-                      // Use type assertion to access V2 fields since we have union type
-                      const senseV2 = sense as any;
-                      const hasPosTh = !!(senseV2.pos_th && senseV2.pos_th.trim().length > 0);
-                      const hasPosEng = !!(senseV2.pos_eng && senseV2.pos_eng.trim().length > 0);
-                      const hasDefinitionEng = !!(senseV2.definition_eng && senseV2.definition_eng.trim().length > 0);
+                      // Use type assertion to access V2/V3 fields since we have union type
+                      const senseV2V3 = sense as any;
+                      const hasPosTh = !!(senseV2V3.pos_th && senseV2V3.pos_th.trim().length > 0);
+                      const hasPosEng = !!(senseV2V3.pos_eng && senseV2V3.pos_eng.trim().length > 0);
+                      const hasDefinitionEng = !!(senseV2V3.definition_eng && senseV2V3.definition_eng.trim().length > 0);
                       const hasV2Fields = hasPosTh || hasPosEng || hasDefinitionEng;
                       const isV2Complete = hasPosTh && hasPosEng && hasDefinitionEng;
                       
-                      // #region agent log - V2 UI DISPLAY
-                      debugLog('SupabaseInspector.tsx:render','V2 UI DISPLAY',{
+                      // Check if V3 fields are present
+                      const hasLabelEng = !!(senseV2V3.label_eng && senseV2V3.label_eng.trim().length > 0);
+                      const isV3Complete = isV2Complete && hasLabelEng;
+                      const isSelected = selectedMeaning === sense;
+                      
+                      // #region agent log - V2/V3 UI DISPLAY
+                      debugLog('SupabaseInspector.tsx:render','V2/V3 UI DISPLAY',{
                         senseIndex:senseIdx,
                         hasPosTh,
                         hasPosEng,
                         hasDefinitionEng,
                         isV2Complete,
                         hasV2Fields,
-                        posThValue:senseV2.pos_th,
-                        posEngValue:senseV2.pos_eng,
-                        definitionEngValue:senseV2.definition_eng,
+                        hasLabelEng,
+                        isV3Complete,
+                        posThValue:senseV2V3.pos_th,
+                        posEngValue:senseV2V3.pos_eng,
+                        definitionEngValue:senseV2V3.definition_eng,
+                        labelEngValue:senseV2V3.label_eng,
                         wordThId:sense.word_th_id
-                      },'V2_ENRICH');
+                      },'V3_ENRICH');
                       // #endregion
                       
                       return (
-                        <div key={senseIdx} className={`bg-white p-3 rounded border-2 ${
-                          isNormalized ? 'border-green-500' : 'border-red-500'
-                        }`}>
+                        <div 
+                          key={senseIdx} 
+                          onClick={() => setSelectedMeaning(sense as MeaningThV2 | MeaningThV3)}
+                          className={`bg-white p-3 rounded border-2 cursor-pointer transition-all ${
+                            isSelected 
+                              ? 'border-blue-600 ring-2 ring-blue-300' 
+                              : isNormalized 
+                              ? 'border-green-500 hover:border-green-600' 
+                              : 'border-red-500 hover:border-red-600'
+                          }`}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-gray-700">Meaning {senseIdx + 1}</span>
                             <div className="flex items-center gap-2">
+                              {/* Show V3 badge if V3 fields exist */}
+                              {hasLabelEng && (
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  isV3Complete ? 'bg-purple-100 text-purple-700' : 'bg-purple-50 text-purple-600'
+                                }`}>
+                                  V3 ✓
+                                </span>
+                              )}
                               {/* Show V2 badge only if V2 fields exist (not just schema support) */}
                               {hasV2Fields && (
                                 <span className={`text-xs px-2 py-0.5 rounded ${
@@ -2558,26 +3095,33 @@ export function SupabaseInspector() {
                           {sense.definition_th && (
                             <p className="text-sm text-gray-800 mb-2">{sense.definition_th}</p>
                           )}
+                          {/* V3 field - Show label_eng if present */}
+                          {hasLabelEng && (
+                            <div className="text-xs text-gray-700 mb-2 border-t pt-2 mt-2">
+                              <span className="font-medium">English Word: </span>
+                              <span className="font-semibold text-blue-700">{senseV2V3.label_eng}</span>
+                            </div>
+                          )}
                           {/* V2 fields - Always show section, indicate missing fields */}
                           <div className="text-xs text-gray-600 mb-1 border-t pt-2 mt-2">
                             <div className="mb-1">
                               <span className="font-medium">POS: </span>
-                              {senseV2.pos_th ? (
-                                <span>{senseV2.pos_th}</span>
+                              {senseV2V3.pos_th ? (
+                                <span>{senseV2V3.pos_th}</span>
                               ) : (
                                 <span className="text-gray-400 italic">—</span>
                               )}
-                              {senseV2.pos_th && senseV2.pos_eng && <span> / </span>}
-                              {senseV2.pos_eng ? (
-                                <span className="italic">({senseV2.pos_eng})</span>
-                              ) : senseV2.pos_th ? (
+                              {senseV2V3.pos_th && senseV2V3.pos_eng && <span> / </span>}
+                              {senseV2V3.pos_eng ? (
+                                <span className="italic">({senseV2V3.pos_eng})</span>
+                              ) : senseV2V3.pos_th ? (
                                 <span className="text-gray-400 italic">(—)</span>
                               ) : null}
                             </div>
                             <div className="mb-1">
                               <span className="font-medium">Definition (EN): </span>
-                              {senseV2.definition_eng ? (
-                                <span className="italic">{senseV2.definition_eng}</span>
+                              {senseV2V3.definition_eng ? (
+                                <span className="italic">{senseV2V3.definition_eng}</span>
                               ) : (
                                 <span className="text-gray-400 italic">—</span>
                               )}

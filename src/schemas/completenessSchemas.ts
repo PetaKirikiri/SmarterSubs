@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { wordThSchema } from './wordThSchema';
 import { meaningThSchema } from './meaningThSchema';
 import { meaningThSchemaV2 } from './meaningThSchemaV2';
+import { meaningThSchemaV3 } from './meaningThSchemaV3';
 
 /**
  * Completeness Validation Schemas
@@ -167,6 +168,66 @@ export const completeTokenThSchemaV2 = z.object({
     return true;
   },
   { message: "All meanings must be V2 complete if they exist" }
+);
+
+/**
+ * Complete Meaning Thai Schema V3
+ * 
+ * Extends meaningThSchemaV3 to require label_eng field
+ * Base schema rules (id, definition_th, V2 fields required) are enforced first
+ * This completeness validation adds the requirement that meaning must have label_eng populated
+ */
+export const completeMeaningThSchemaV3 = meaningThSchemaV3.refine(
+  (data) => {
+    return !!(
+      data.label_eng &&
+      data.label_eng.trim().length > 0 &&
+      // V2 fields still required for V3 completeness
+      data.pos_th &&
+      data.pos_th.trim().length > 0 &&
+      data.pos_eng &&
+      data.pos_eng.trim().length > 0 &&
+      data.definition_eng &&
+      data.definition_eng.trim().length > 0
+    );
+  },
+  { 
+    message: "Meaning V3 must have label_eng populated (and V2 fields)",
+    path: ['label_eng']
+  }
+);
+
+/**
+ * Complete Token Thai Schema V3
+ * 
+ * Extends completeTokenThSchemaV2 to require V3 meanings
+ * Token must have complete word data AND all meanings must be V3 complete (if meanings exist)
+ */
+export const completeTokenThSchemaV3 = z.object({
+  token: z.string().min(1),
+  word: completeWordThSchema, // Base wordThSchema validated first, then completeness validation
+  senses: z.array(completeMeaningThSchemaV3).optional(), // Base meaningThSchemaV3 validated first, then V3 completeness validation
+}).refine(
+  (data) => {
+    // If senses exist, all must be V3 complete
+    if (data.senses && data.senses.length > 0) {
+      return data.senses.every(s => {
+        return !!(
+          s.label_eng &&
+          s.label_eng.trim().length > 0 &&
+          // V2 fields still required
+          s.pos_th &&
+          s.pos_th.trim().length > 0 &&
+          s.pos_eng &&
+          s.pos_eng.trim().length > 0 &&
+          s.definition_eng &&
+          s.definition_eng.trim().length > 0
+        );
+      });
+    }
+    return true;
+  },
+  { message: "All meanings must be V3 complete if they exist" }
 );
 
 // Legacy exports for backward compatibility during migration

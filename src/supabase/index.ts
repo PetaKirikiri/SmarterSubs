@@ -16,8 +16,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { subtitleThSchema } from '../schemas/subtitleThSchema';
 import { wordThSchema } from '../schemas/wordThSchema';
-import { meaningThSchema } from '../schemas/meaningThSchema';
-import { meaningThSchemaV2 } from '../schemas/meaningThSchemaV2';
+import { meaningThSchema, type MeaningTh } from '../schemas/meaningThSchema';
+import { meaningThSchemaV2, type MeaningThV2 } from '../schemas/meaningThSchemaV2';
+import { meaningThSchemaV3, type MeaningThV3 } from '../schemas/meaningThSchemaV3';
 
 // Supabase connection
 // ⚠️ Direct database connection - no caching layer
@@ -229,13 +230,31 @@ export async function saveSubtitlesBatch(subtitles: Array<{
     }
   });
 
-  const subtitleDataArray = validatedSubtitles.map(validated => ({
-    id: validated.id,
-    thai: validated.thai,
-    start_sec_th: validated.start_sec_th !== undefined ? validated.start_sec_th : null,
-    end_sec_th: validated.end_sec_th !== undefined ? validated.end_sec_th : null,
-    tokens_th: validated.tokens_th || null,
-  }));
+  const subtitleDataArray = validatedSubtitles.map(validated => {
+    // Convert BigInt meaning_id values to strings for JSON serialization
+    let tokens_th = validated.tokens_th;
+    if (tokens_th?.tokens) {
+      tokens_th = {
+        tokens: tokens_th.tokens.map(token => {
+          if (token.meaning_id !== undefined) {
+            return {
+              t: token.t,
+              meaning_id: typeof token.meaning_id === 'bigint' ? token.meaning_id.toString() : token.meaning_id
+            };
+          }
+          return token;
+        })
+      };
+    }
+    
+    return {
+      id: validated.id,
+      thai: validated.thai,
+      start_sec_th: validated.start_sec_th !== undefined ? validated.start_sec_th : null,
+      end_sec_th: validated.end_sec_th !== undefined ? validated.end_sec_th : null,
+      tokens_th: tokens_th || null,
+    };
+  });
 
   // #region agent log
   fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSubtitlesBatch',message:'Calling Supabase upsert',data:{subtitleCount:subtitleDataArray.length,table:'subtitles_th'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H6'})}).catch(()=>{});
@@ -526,6 +545,9 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
     if (sense.pos_eng === null) sense.pos_eng = undefined;
     if (sense.definition_eng === null) sense.definition_eng = undefined;
     
+    // Normalize V3 fields: convert null to undefined (Zod expects undefined, not null)
+    if (sense.label_eng === null) sense.label_eng = undefined;
+    
     // Normalize created_at: convert Date objects to ISO string, null to undefined, invalid strings to undefined
     if (sense.created_at === null) {
       sense.created_at = undefined;
@@ -568,7 +590,26 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
       fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'VALIDATION START',data:{index,senseId:sense.id?.toString(),senseKeys:Object.keys(sense),hasDefinitionTh:!!sense.definition_th,hasPosTh:!!sense.pos_th,hasPosEng:!!sense.pos_eng,hasDefinitionEng:!!sense.definition_eng},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
       // #endregion
       
-      // Try V2 schema first (accepts V2 fields, backward compatible with V1-only data)
+      // Try V3 schema first (accepts V3 fields, backward compatible with V1/V2 data)
+      // V3 schema has V3 fields as optional, so it accepts V1, V2, and V3 data
+      const v3Result = meaningThSchemaV3.safeParse(sense);
+      if (v3Result.success) {
+        const hasV3Fields = !!(v3Result.data.label_eng);
+        const hasV2Fields = !!(v3Result.data.pos_th || v3Result.data.pos_eng || v3Result.data.definition_eng);
+        // #region agent log - V3 VALIDATION SUCCESS
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V3 VALIDATION SUCCESS',data:{index,senseId:v3Result.data.id?.toString(),hasDefinition:!!v3Result.data.definition_th,hasV2Fields,hasV3Fields,isV1:!hasV2Fields,isV2:hasV2Fields && !hasV3Fields,isV3:hasV3Fields,definitionTh:v3Result.data.definition_th?.substring(0,30)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+        // #endregion
+        // Return V3 data - it includes all V1/V2 fields plus optional V3 fields
+        // TypeScript will allow V3 fields to be accessed even though return type is MeaningTh[]
+        // The component can check for and display V3 fields if present
+        return v3Result.data as any as MeaningTh; // Cast to MeaningTh[] return type, but preserve V3 fields
+      }
+      
+      // #region agent log - V3 VALIDATION FAILED, TRYING V2
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V3 VALIDATION FAILED, TRYING V2',data:{index,senseId:sense.id?.toString(),v3Error:v3Result.error.message,v3Errors:v3Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+      // #endregion
+      
+      // Try V2 schema (accepts V2 fields, backward compatible with V1-only data)
       // V2 schema has V2 fields as optional, so it accepts both V1 and V2 data
       const v2Result = meaningThSchemaV2.safeParse(sense);
       if (v2Result.success) {
@@ -586,9 +627,15 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
       fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'V2 VALIDATION FAILED, TRYING V1',data:{index,senseId:sense.id?.toString(),v2Error:v2Result.error.message,v2Errors:v2Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
       // #endregion
       
-      // Fall back to V1 schema if V2 fails (defensive - shouldn't happen but handles edge cases)
-      // Remove V2 fields before V1 validation (V1 schema is strict and rejects unknown keys)
+      // Fall back to V1 schema if V2/V3 fails (defensive - shouldn't happen but handles edge cases)
+      // Remove V2/V3 fields before V1 validation (V1 schema is strict and rejects unknown keys)
       const senseForV1 = { ...sense };
+      // Remove V2 fields
+      delete (senseForV1 as any).pos_th;
+      delete (senseForV1 as any).pos_eng;
+      delete (senseForV1 as any).definition_eng;
+      // Remove V3 fields
+      delete (senseForV1 as any).label_eng;
       delete senseForV1.pos_th;
       delete senseForV1.pos_eng;
       delete senseForV1.definition_eng;
@@ -600,12 +647,12 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
         return v1Result.data;
       }
       
-      // #region agent log - BOTH VALIDATIONS FAILED
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'BOTH VALIDATIONS FAILED',data:{index,senseId:sense.id?.toString(),v2Error:v2Result.error.message,v1Error:v1Result.error.message,v2Errors:v2Result.error.errors,v1Errors:v1Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+      // #region agent log - ALL VALIDATIONS FAILED
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'ALL VALIDATIONS FAILED',data:{index,senseId:sense.id?.toString(),v3Error:v3Result.error.message,v2Error:v2Result.error.message,v1Error:v1Result.error.message,v3Errors:v3Result.error.errors,v2Errors:v2Result.error.errors,v1Errors:v1Result.error.errors},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
       // #endregion
       
-      // Both validations failed
-      throw new Error(`V2 validation failed: ${v2Result.error.message}; V1 validation failed: ${v1Result.error.message}`);
+      // All validations failed
+      throw new Error(`V3 validation failed: ${v3Result.error.message}; V2 validation failed: ${v2Result.error.message}; V1 validation failed: ${v1Result.error.message}`);
     } catch (error) {
       // #region agent log - VALIDATION ERROR
       fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'VALIDATION ERROR',data:{index,senseId:sense.id?.toString(),errorMessage:error instanceof Error ? error.message : String(error),errorStack:error instanceof Error ? error.stack?.substring(0,200) : undefined,rawSenseKeys:Object.keys(sense)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
@@ -620,8 +667,9 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
   const validSenses = normalizedData.filter((s): s is NonNullable<typeof s> => s !== null);
   const invalidCount = normalizedData.length - validSenses.length;
   const v1Count = validSenses.filter((s: any) => !(s.pos_th || s.pos_eng || s.definition_eng)).length;
-  const v2Count = validSenses.filter((s: any) => !!(s.pos_th || s.pos_eng || s.definition_eng)).length;
-  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'FINAL RESULTS',data:{wordTh,totalSenses:normalizedData.length,validSenses:validSenses.length,invalidCount,v1Count,v2Count,firstValidSense:validSenses[0] ? {id:validSenses[0].id?.toString(),hasDefinition:!!validSenses[0].definition_th,hasV2Fields:!!(validSenses[0].pos_th || validSenses[0].pos_eng || validSenses[0].definition_eng),definitionThPreview:validSenses[0].definition_th?.substring(0,30)} : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
+  const v2Count = validSenses.filter((s: any) => !!(s.pos_th || s.pos_eng || s.definition_eng) && !s.label_eng).length;
+  const v3Count = validSenses.filter((s: any) => !!(s.label_eng)).length;
+  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:fetchSenses',message:'FINAL RESULTS',data:{wordTh,totalSenses:normalizedData.length,validSenses:validSenses.length,invalidCount,v1Count,v2Count,v3Count,firstValidSense:validSenses[0] ? {id:validSenses[0].id?.toString(),hasDefinition:!!validSenses[0].definition_th,hasV2Fields:!!(validSenses[0].pos_th || validSenses[0].pos_eng || validSenses[0].definition_eng),hasV3Fields:!!(validSenses[0] as any).label_eng,definitionThPreview:validSenses[0].definition_th?.substring(0,30)} : null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'FETCH_SENSES'})}).catch(()=>{});
   // #endregion
   
   if (validSenses.length === 0 && combinedData.length > 0) {
@@ -631,6 +679,72 @@ export async function fetchSenses(wordTh: string): Promise<MeaningTh[]> {
   }
   
   return validSenses;
+}
+
+/**
+ * Fetch a single meaning by ID from meanings_th table
+ * 
+ * @param meaningId - The meaning ID (bigint, number, or string)
+ * @returns The meaning object or null if not found
+ */
+export async function fetchMeaningById(meaningId: bigint | number | string): Promise<MeaningTh | MeaningThV2 | MeaningThV3 | null> {
+  // Convert to number or string for Supabase query
+  const idForQuery = typeof meaningId === 'bigint' 
+    ? (meaningId <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(meaningId) : meaningId.toString())
+    : meaningId;
+  
+  const { data, error } = await supabase
+    .from('meanings_th')
+    .select('*')
+    .eq('id', idForQuery)
+    .single();
+  
+  if (error || !data) {
+    return null;
+  }
+  
+  // Normalize null to undefined for optional fields
+  if (data.word_th_id === null) data.word_th_id = undefined;
+  if (data.source === null) data.source = undefined;
+  if (data.created_at === null) data.created_at = undefined;
+  if (data.pos_th === null) data.pos_th = undefined;
+  if (data.pos_eng === null) data.pos_eng = undefined;
+  if (data.definition_eng === null) data.definition_eng = undefined;
+  if (data.label_eng === null) data.label_eng = undefined;
+  
+  // Normalize created_at
+  if (data.created_at instanceof Date) {
+    data.created_at = data.created_at.toISOString();
+  } else if (typeof data.created_at === 'string') {
+    try {
+      const date = new Date(data.created_at);
+      if (isNaN(date.getTime())) {
+        data.created_at = undefined;
+      } else {
+        data.created_at = date.toISOString();
+      }
+    } catch {
+      data.created_at = undefined;
+    }
+  }
+  
+  // Try V3 schema first, then V2, then V1
+  const v3Result = meaningThSchemaV3.safeParse(data);
+  if (v3Result.success) {
+    return v3Result.data as any as MeaningTh;
+  }
+  
+  const v2Result = meaningThSchemaV2.safeParse(data);
+  if (v2Result.success) {
+    return v2Result.data as any as MeaningTh;
+  }
+  
+  const v1Result = meaningThSchema.safeParse(data);
+  if (v1Result.success) {
+    return v1Result.data;
+  }
+  
+  return null;
 }
 
 // REMOVED: failed_words and failed_word_senses tables don't exist in Supabase
@@ -1588,11 +1702,18 @@ export async function saveSenses(senses: Array<{
   // Validate senses with Zod before saving
   const validatedSenses = senses.map((sense, index) => {
     try {
-      // Detect schema version: try V2 first if V2 fields are present
+      // Detect schema version: try V3 first if V3 fields are present, then V2, then V1
+      const hasV3Fields = !!(sense.label_eng);
       const hasV2Fields = !!(sense.pos_th || sense.pos_eng || sense.definition_eng);
       let validated;
       
-      if (hasV2Fields) {
+      if (hasV3Fields) {
+        // Validate with V3 schema
+        validated = meaningThSchemaV3.strict().parse(sense);
+        // #region agent log - V3 SCHEMA VALIDATION
+        fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'V3 SCHEMA VALIDATION PASSED',data:{index,senseId:validated.id?.toString(),hasLabelEng:!!validated.label_eng,hasPosTh:!!validated.pos_th,hasPosEng:!!validated.pos_eng,hasDefinitionEng:!!validated.definition_eng,isV3Complete:!!(validated.label_eng && validated.pos_th && validated.pos_eng && validated.definition_eng)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
+        // #endregion
+      } else if (hasV2Fields) {
         // Validate with V2 schema
         validated = meaningThSchemaV2.strict().parse(sense);
         // #region agent log - V2 SCHEMA VALIDATION
@@ -1605,9 +1726,10 @@ export async function saveSenses(senses: Array<{
       
       return validated;
     } catch (error) {
-      // #region agent log - V2 SCHEMA VALIDATION ERROR
+      // #region agent log - SCHEMA VALIDATION ERROR
+      const hasV3Fields = !!(sense.label_eng);
       const hasV2Fields = !!(sense.pos_th || sense.pos_eng || sense.definition_eng);
-      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'V2 SCHEMA VALIDATION FAILED',data:{index,senseId:sense.id?.toString(),hasV2Fields,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V2_ENRICH'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'supabase/index.ts:saveSenses',message:'SCHEMA VALIDATION FAILED',data:{index,senseId:sense.id?.toString(),hasV3Fields,hasV2Fields,errorMessage:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'V3_ENRICH'})}).catch(()=>{});
       // #endregion
       console.error(`[Save] Sense ${index} validation failed:`, error);
       throw error;
@@ -1658,6 +1780,7 @@ export async function saveSenses(senses: Array<{
       pos_th?: string | null;
       pos_eng?: string | null;
       definition_eng?: string | null;
+      label_eng?: string | null;
       metadata?: Record<string, unknown>;
     } = {
       id: idValue, // meaningThSchema.id (bigint) - convert to number or string for Supabase
@@ -1678,9 +1801,14 @@ export async function saveSenses(senses: Array<{
       meaningRow.definition_eng = sense.definition_eng || null;
     }
 
+    // Add V3 fields if present
+    if ('label_eng' in sense && sense.label_eng !== undefined) {
+      meaningRow.label_eng = sense.label_eng || null;
+    }
+
     // Handle any extra fields (though meaningThSchema.strict() should reject them)
     // This is defensive - if passthrough was used, capture metadata
-    const { id, definition_th, word_th_id, source, created_at, pos_th, pos_eng, definition_eng, ...senseMetadata } = sense;
+    const { id, definition_th, word_th_id, source, created_at, pos_th, pos_eng, definition_eng, label_eng, ...senseMetadata } = sense;
     if (Object.keys(senseMetadata).length > 0) {
       meaningRow.metadata = senseMetadata as Record<string, unknown>;
     }

@@ -129,9 +129,9 @@ export async function executeStepsFromSchema(
           output = await buildThaiTokensFromText(executionContext.thaiText);
           // Validate output matches expected schema: { tokens: string[] }
           if (output && typeof output === 'object' && 'tokens' in output && Array.isArray((output as { tokens: unknown }).tokens)) {
-            executionContext.tokens_th = output as { tokens: string[] };
+            executionContext.tokens_th = output as { tokens: Array<{t: string, meaning_id?: bigint}> };
           } else {
-            throw new Error(`Invalid tokenization output: expected { tokens: string[] }, got ${typeof output}`);
+            throw new Error(`Invalid tokenization output: expected { tokens: Array<{t: string, meaning_id?: bigint}> }, got ${typeof output}`);
           }
           break;
 
@@ -490,9 +490,16 @@ export async function processSubtitlesForEpisode(mediaId: string): Promise<void>
   const uniqueTokens = new Set<string>();
   for (const subtitle of processedSubtitles) {
     if (subtitle.tokens_th?.tokens) {
-      for (const token of subtitle.tokens_th.tokens) {
-        if (token && token.trim()) {
-          uniqueTokens.add(token.trim());
+      for (const tokenItem of subtitle.tokens_th.tokens) {
+        // Extract token text from object format {t: string, meaning_id?: bigint}
+        if (tokenItem && typeof tokenItem === 'object' && 't' in tokenItem) {
+          const t = (tokenItem as any).t;
+          if (typeof t === 'string' && t.trim()) {
+            uniqueTokens.add(t.trim());
+          }
+        } else if (typeof tokenItem === 'string' && tokenItem.trim()) {
+          // Legacy format - plain string
+          uniqueTokens.add(tokenItem.trim());
         }
       }
     }

@@ -187,12 +187,18 @@ Ensure:
 
       // Build V2 sense: preserve all V1 fields, add V2 fields
       // ⚠️ CRITICAL: Must preserve the original `id` to ensure upsert updates existing entries
+      // ⚠️ CRITICAL: Explicitly construct V2 sense to avoid including V3 fields (like label_eng)
       const v2Sense: MeaningThV2 = {
-        ...sense, // Preserve all V1 fields (id, definition_th, word_th_id, source, created_at)
         id: sense.id, // Explicitly preserve id to ensure upsert works correctly
+        definition_th: sense.definition_th, // V1 required field
+        word_th_id: sense.word_th_id, // V1 optional field
+        source: sense.source, // V1 optional field
+        created_at: sense.created_at, // V1 optional field
+        // V2 fields from enrichment
         pos_th: enriched.pos_th?.trim() || undefined,
         pos_eng: enriched.pos_eng?.trim() || undefined,
         definition_eng: enriched.definition_eng?.trim() || undefined,
+        // Explicitly exclude V3 fields (label_eng) - V2 schema is strict
       };
       
       // #region agent log - V2 ENRICHMENT ID PRESERVATION

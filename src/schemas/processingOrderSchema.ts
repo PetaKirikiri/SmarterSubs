@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod';
+import { bigintCoerce } from './zodHelpers';
 import { wordThSchema } from './wordThSchema';
 import { meaningThSchema } from './meaningThSchema';
 import { subtitleThSchema } from './subtitleThSchema';
@@ -117,7 +118,12 @@ export type ProcessingOrder = z.infer<typeof processingOrderSchema>;
 export const pipelineContextSchema = z.object({
   // Subtitle-level data (from subtitleThSchema)
   thaiText: z.string().optional(), // From subtitle.thai
-  tokens_th: z.object({ tokens: z.array(z.string()) }).optional(), // From subtitle.tokens_th
+  tokens_th: z.object({ 
+    tokens: z.array(z.object({ 
+      t: z.string(), 
+      meaning_id: bigintCoerce.optional() 
+    })) 
+  }).optional(), // From subtitle.tokens_th
   
   // Word-level data (from wordThSchema)
   word_th: z.string().optional(), // NOT textTh - matches wordThSchema.word_th
@@ -187,7 +193,14 @@ export const defaultProcessingOrder: ProcessingOrder = {
       dependsOn: [],
       description: 'Tokenize Thai subtitle text into word tokens',
       inputSchema: z.object({ thaiText: z.string() }).strict(),
-      outputSchema: z.object({ tokens_th: z.object({ tokens: z.array(z.string()) }) }).strict(),
+      outputSchema: z.object({ 
+        tokens_th: z.object({ 
+          tokens: z.array(z.object({ 
+            t: z.string(), 
+            meaning_id: bigintCoerce.optional() 
+          })) 
+        }) 
+      }).strict(),
     },
     {
       name: 'g2p',

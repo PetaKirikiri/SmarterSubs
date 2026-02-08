@@ -84,13 +84,14 @@ export async function tokenizeThaiSentence(thaiSentence: string): Promise<string
 
 /**
  * Build tokens_th object from Thai text
- * Converts tokenized text to the format expected by subtitleSchema: { tokens: string[] }
+ * Converts tokenized text to the format expected by subtitleSchema: { tokens: Array<{t: string, meaning_id?: bigint}> }
  * @param {string} thaiText - Thai text to tokenize
- * @returns {Promise<{ tokens: string[] }>} Thai tokens object (for tokens_th field)
+ * @returns {Promise<{ tokens: Array<{t: string, meaning_id?: bigint}> }>} Thai tokens object (for tokens_th field)
  */
-export async function buildThaiTokensFromText(thaiText: string): Promise<{ tokens: string[] }> {
+export async function buildThaiTokensFromText(thaiText: string): Promise<{ tokens: Array<{t: string, meaning_id?: bigint}> }> {
   try {
-    const tokens = await tokenizeThaiSentence(thaiText);
+    const tokenStrings = await tokenizeThaiSentence(thaiText);
+    const tokens = tokenStrings.map(t => ({ t }));
     return { tokens };
   } catch (error) {
     throw error;
