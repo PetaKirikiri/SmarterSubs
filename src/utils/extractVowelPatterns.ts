@@ -102,9 +102,9 @@ export function extractVowelPatterns(g2p: string): string[] {
   // Define all vowel patterns in order of length (longest first)
   // This order is critical - longer patterns must be checked first
   const allPatterns = [
-    'ooaj', 'qqj', 'vva', 'ooj', 'oej', 'ahj', 'qq', '@@', 'vv', 'uj', 'aj',
+    'ooaj', 'qqj', 'vva', 'ooj', 'oej', 'ahj', 'qq', '@@', 'vv', 'xx', 'uj', 'aj',
     'aa', 'ee', 'ii', 'oo', 'uu',
-    'a', 'e', 'i', 'o', 'u', 'q', 'v'
+    'a', 'e', 'i', 'o', 'u', 'q', 'v', 'x', '@'
   ];
   
   // Check each pattern - findVowelPatternsInG2P handles the logic
@@ -116,4 +116,77 @@ export function extractVowelPatterns(g2p: string): string[] {
   }
   
   return foundPatterns;
+}
+
+/** Known G2P vowel patterns (longest first for correct extraction) */
+const G2P_VOWEL_PATTERNS = [
+  'ooaj',
+  'qqj',
+  'vva',
+  'ooj',
+  'oej',
+  'ahj',
+  'qq',
+  '@@',
+  'vv',
+  'xx', // AI4Thai: แ (แส), แะ - e.g. s-xx4, h-x3
+  'uj',
+  'aj',
+  'aa',
+  'ee',
+  'ii',
+  'oo',
+  'uu',
+  'a',
+  'e',
+  'i',
+  'o',
+  'u',
+  'q',
+  'v',
+  'x', // AI4Thai: short ae - e.g. h-x3 (แฮะ)
+  '@', // AI4Thai: เ–าะ - e.g. k-@1 (เกาะ)
+];
+
+/**
+ * Extract the vowel pattern from a single G2P syllable.
+ * Structure: consonant-vowel-ending. Consonant is consistent; vowel is one of the known inline constants.
+ * G2P syllable format: "k-aa0-n^" or "d-@@2-j^" - phonemes separated by "-".
+ * Returns the vowel pattern (e.g. "aa", "@@") or null if none found.
+ */
+export function extractVowelPatternFromG2PSyllable(g2pSyllable: string): string | null {
+  if (!g2pSyllable?.trim()) return null;
+  const tokens = g2pSyllable.trim().split('-').map((t) => (t || '').trim()).filter(Boolean);
+  if (tokens.length < 2) return null;
+
+  // Token 0 = initial consonant (consistent). Vowel region = tokens 1..n.
+  const vowelTokens = tokens.slice(1);
+  const vowelRegion = vowelTokens.join('');
+
+  // Normalize (remove tone 0-4, ^) and match known patterns
+  const normalized = normalizeG2PForPatternMatching(vowelRegion);
+  for (const pattern of G2P_VOWEL_PATTERNS) {
+    if (findVowelPatternsInG2P(normalized, pattern)) return pattern;
+  }
+
+  // Fallback: whole syllable (in case structure differs, e.g. no clear consonant)
+  const fullNormalized = normalizeG2PForPatternMatching(g2pSyllable);
+  for (const pattern of G2P_VOWEL_PATTERNS) {
+    if (findVowelPatternsInG2P(fullNormalized, pattern)) return pattern;
+  }
+  return null;
+}
+
+/**
+ * Map Thai character index to G2P syllable index.
+ * Uses position heuristic: syllableIndex = floor(charIndex * syllableCount / wordLength).
+ */
+export function thaiCharIndexToSyllableIndex(
+  charIndex: number,
+  wordLength: number,
+  syllableCount: number
+): number {
+  if (syllableCount <= 0 || wordLength <= 0) return 0;
+  const idx = Math.floor((charIndex * syllableCount) / wordLength);
+  return Math.min(idx, syllableCount - 1);
 }

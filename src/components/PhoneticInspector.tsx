@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../supabase';
-import { extractVowelPatterns } from '../utils/extractVowelPatterns';
+import { extractVowelPatterns, extractVowelPatternFromG2PSyllable, thaiCharIndexToSyllableIndex } from '../utils/extractVowelPatterns';
 import { getVowelParserOutput } from '../utils/getVowelParserOutput';
 import { savePhoneticG2PRulesBatch, savePhoneticG2PRule, updatePhoneticG2PRuleEvidence, fetchPhoneticG2PRules, savePhoneticG2PEvidenceBatch, fetchPhoneticG2PEvidence, seedThaiVowels, checkSeededVowelsCount, deletePhoneticG2PRule } from '../supabase';
 import { SEEDED_VOWEL_COUNT } from '../data/thaiVowelSeeds';
@@ -773,6 +773,13 @@ export function PhoneticInspector() {
     return vowelDataArray;
   }
 
+  /** Map discovered g2p_code to human-readable english_vowel for display */
+  const G2P_TO_ENGLISH_VOWEL: Record<string, string> = {
+    aa: 'long a', a: 'short a', ii: 'long i', i: 'short i', uu: 'long u', u: 'short u',
+    ee: 'long e', e: 'short e', oo: 'long o', o: 'short o',
+    ia: 'ia', ua: 'ua', uea: 'uea', ɔɔ: 'aw', ɔ: 'o (short)',
+  };
+
   /**
    * Discover G2P patterns from words_th by matching Thai vowels
    * Uses Thai word text as connective tissue: find words containing seeded Thai vowel characters,
@@ -802,55 +809,50 @@ export function PhoneticInspector() {
 
       console.log(`[PhoneticInspector] Found ${seededRules.length} seeded vowels to map`);
 
-      // Fetch all words with G2P data
-      const { data: words, error: wordsError } = await supabase
+      // Fetch ALL words (vowel matching uses full corpus; G2P extraction filters later)
+      // Include phonetic_en for evidence table (parser_phonetic)
+      const { data: allWords, error: wordsError } = await supabase
         .from('words_th')
-        .select('word_th, g2p')
-        .not('g2p', 'is', null);
-
+        .select('word_th, g2p, phonetic_en')
+        .range(0, 9999);
 
       if (wordsError) {
         console.warn('[PhoneticInspector] Could not fetch words:', wordsError.message);
         return;
       }
 
-      if (!words || words.length === 0) {
-        console.log('[PhoneticInspector] No words with G2P data found');
+      if (!allWords || allWords.length === 0) {
+        console.log('[PhoneticInspector] No words found in words_th');
         return;
       }
 
-      console.log(`[PhoneticInspector] Scanning ${words.length} words to match Thai vowels...`);
+      console.log(`[PhoneticInspector] Scanning ${allWords.length} words to match Thai vowels...`);
 
       // For each seeded vowel, find words containing that Thai vowel character
       const updates: Array<{
         id: number;
         g2p_code: string;
+        bestCount: number;
         thai_vowel: string; // PRESERVE thai_vowel from seed
         evidence: string;
+        evidenceExamples: Array<{ word_th: string; g2p: string; phonetic_en?: string | null }>; // For phonetic_g2p_evidence table
         phonetic_output: string; // EMPTY - user input field
+        patternCandidates: Array<{ pattern: string; count: number }>; // All patterns by count desc, for conflict fallback
+        patternExamples: Map<string, Array<{ word_th: string; g2p: string; phonetic_en?: string | null }>>;
       }> = [];
 
       for (const seededRule of seededRules) {
-        
         if (!seededRule.thai_vowel) {
           continue;
         }
 
-        // Extract the actual Thai vowel characters (remove dashes/placeholders for matching)
-        // e.g., "–ะ" -> "ะ", "เ–" -> "เ", "ไ–" -> "ไ"
-        const thaiVowelChars = seededRule.thai_vowel.replace(/[–\-]/g, '').trim();
-        
-        
-        if (!thaiVowelChars) {
-          continue;
-        }
+        // Use regex (dash = any char) - includes() fails for "เ–ะ" etc. since "เะ" never appears in real Thai
+        const regex = thaiVowelPatternToRegex(seededRule.thai_vowel);
 
-        // Find words that contain this Thai vowel character
-        
-        const matchingWords = words.filter(word => 
-          word.word_th && word.word_th.includes(thaiVowelChars)
+        // Find words that match this Thai vowel pattern (from full corpus)
+        const matchingWords = allWords.filter(word =>
+          word.word_th && regex.test(word.word_th)
         );
-
 
         if (matchingWords.length === 0) {
           console.log(`[PhoneticInspector] No words found containing Thai vowel "${seededRule.thai_vowel}" (ID ${seededRule.id}) - keeping SEED_ entry`);
@@ -859,93 +861,119 @@ export function PhoneticInspector() {
 
         console.log(`[PhoneticInspector] Found ${matchingWords.length} words containing "${seededRule.thai_vowel}"`);
 
-        // Extract G2P patterns from matching words
-        
+        // Extract G2P patterns only from the syllable(s) that contain the Thai vowel
+        // Use Thai vowel position to isolate the corresponding G2P syllable - no blind extraction
+        const matchingWordsWithG2P = matchingWords.filter(w => w.g2p && w.g2p.trim());
         const patternCounts = new Map<string, number>();
-        const patternExamples = new Map<string, Array<{ word_th: string; g2p: string }>>();
+        const patternExamples = new Map<string, Array<{ word_th: string; g2p: string; phonetic_en?: string | null }>>();
 
-        for (const word of matchingWords) {
-          if (!word.g2p) continue;
-          const patterns = extractVowelPatterns(word.g2p);
-          
-          for (const pattern of patterns) {
+        for (const word of matchingWordsWithG2P) {
+          const wordTh = word.word_th || '';
+          const g2pStr = (word.g2p || '').trim();
+          const syllables = g2pStr.split('|').map((s) => s.trim()).filter(Boolean);
+          const syllableCount = syllables.length;
+          if (syllableCount === 0) continue;
+
+          const regex = thaiVowelPatternToRegex(seededRule.thai_vowel);
+          const matches = [...wordTh.matchAll(new RegExp(regex.source, 'g'))];
+
+          for (const match of matches) {
+            const matchIndex = match.index ?? 0;
+            const sylIdx = thaiCharIndexToSyllableIndex(matchIndex, wordTh.length, syllableCount);
+            const syllable = syllables[sylIdx] ?? '';
+            const pattern = extractVowelPatternFromG2PSyllable(syllable);
+            if (!pattern || pattern.startsWith('SEED_')) continue;
+
             patternCounts.set(pattern, (patternCounts.get(pattern) || 0) + 1);
-            
             if (!patternExamples.has(pattern)) {
               patternExamples.set(pattern, []);
             }
             const examples = patternExamples.get(pattern)!;
-            if (!examples.some(e => e.word_th === word.word_th)) {
-              examples.push({ word_th: word.word_th, g2p: word.g2p });
+            if (!examples.some((e) => e.word_th === wordTh)) {
+              examples.push({ word_th: wordTh, g2p: word.g2p!, phonetic_en: (word as { phonetic_en?: string | null }).phonetic_en });
             }
           }
         }
 
 
-        // Find the most common pattern (most likely match for this Thai vowel)
+        // Find the most common pattern, with Thai-vowel-aware preference for long/short pairs
+        // e.g. "–า" (long a) should map to "aa", not "a" which wins by raw count
+        const LONG_VOWEL_PAIRS: [string, string][] = [['aa', 'a'], ['ii', 'i'], ['uu', 'u'], ['ee', 'e'], ['oo', 'o']];
+        const thaiVowelStr = seededRule.thai_vowel.replace(/[–\-]/g, '').trim();
+        const prefersLong = /า|ี|ู|เ|แ|โ|อ|ัว|ีย|ือ/.test(thaiVowelStr); // long-vowel markers
+        const prefersShort = /ะ|ิ|ึ|ุ/.test(thaiVowelStr); // short-vowel markers
+
         let bestPattern: string | null = null;
         let bestCount = 0;
 
         for (const [pattern, count] of patternCounts.entries()) {
-          // Skip SEED_ patterns
           if (pattern.startsWith('SEED_')) continue;
-          
           if (count > bestCount) {
             bestCount = count;
             bestPattern = pattern;
           }
         }
 
+        // Override when raw count picked wrong member of long/short pair
+        if (bestPattern && (prefersLong || prefersShort)) {
+          for (const [longP, shortP] of LONG_VOWEL_PAIRS) {
+            const longCount = patternCounts.get(longP) ?? 0;
+            const shortCount = patternCounts.get(shortP) ?? 0;
+            if (prefersLong && bestPattern === shortP && longCount > 0) {
+              bestPattern = longP;
+              bestCount = longCount;
+              break;
+            }
+            if (prefersShort && bestPattern === longP && shortCount > 0) {
+              bestPattern = shortP;
+              bestCount = shortCount;
+              break;
+            }
+          }
+        }
 
         if (bestPattern) {
           const examples = patternExamples.get(bestPattern) || [];
-          // Store evidence: list of example words that contain this Thai vowel and have this G2P pattern
-          const evidenceWords = examples.slice(0, 20).map(e => e.word_th); // Get up to 20 examples
+          const evidenceExamples = examples.slice(0, 20); // Up to 20 for phonetic_g2p_evidence
+          const evidenceWords = evidenceExamples.map(e => e.word_th);
           const evidence = JSON.stringify(evidenceWords);
+
+          // All patterns sorted by count desc for conflict fallback (evidence must get g2p_code)
+          const patternCandidates = [...patternCounts.entries()]
+            .filter(([p]) => !p.startsWith('SEED_'))
+            .sort((a, b) => b[1] - a[1])
+            .map(([pattern, count]) => ({ pattern, count }));
 
           console.log(`[PhoneticInspector] Mapping "${seededRule.thai_vowel}" (ID ${seededRule.id}) to G2P pattern "${bestPattern}"`);
           console.log(`[PhoneticInspector]   Found in ${bestCount} words, evidence: ${evidenceWords.slice(0, 5).join(', ')}${evidenceWords.length > 5 ? '...' : ''}`);
 
-
           updates.push({
             id: seededRule.id,
             g2p_code: bestPattern,
+            bestCount,
             thai_vowel: seededRule.thai_vowel, // PRESERVE thai_vowel from seed
             evidence,
+            evidenceExamples,
             phonetic_output: '', // EMPTY - user input field, not parser output
+            patternCandidates,
+            patternExamples,
           });
         } else {
-          console.log(`[PhoneticInspector] No G2P pattern found for "${seededRule.thai_vowel}" (ID ${seededRule.id}) - keeping SEED_ entry`);
-          
-          // Even if no pattern found, update evidence with words that contain this Thai vowel
-          // This helps with future pattern discovery
-          const allMatchingWords = matchingWords.slice(0, 20).map(w => w.word_th);
-          if (allMatchingWords.length > 0) {
-            const evidence = JSON.stringify(allMatchingWords);
-            // Update the SEED_ entry with evidence even if no pattern mapped
-            const seededRuleForUpdate = seededRules.find(r => r.id === seededRule.id);
-            if (seededRuleForUpdate) {
-              
-              // CRITICAL: For seeded vowels (IDs 1-31), always preserve hardcoded thai_vowel
-              const { THAI_VOWEL_SEEDS } = await import('../data/thaiVowelSeeds');
-              const hardcodedThaiVowel = seededRule.id >= 1 && seededRule.id <= 31 
-                ? THAI_VOWEL_SEEDS[seededRule.id - 1]?.thai_vowel 
-                : seededRule.thai_vowel;
-              
-              const { error: updateError } = await supabase
-                .from('phonetic_g2p_rules')
-                .update({
-                  thai_vowel: hardcodedThaiVowel || seededRule.thai_vowel, // CRITICAL: Always preserve hardcoded value
-                  evidence,
-                })
-                .eq('id', seededRule.id);
-              
-              
-              if (!updateError) {
-                console.log(`[PhoneticInspector] Updated evidence for "${seededRule.thai_vowel}" (ID ${seededRule.id}) with ${allMatchingWords.length} example words`);
-              }
-            }
-          }
+          // FAILURE: evidence exists but g2p_code not updated. Win condition = g2p_code saved and visible.
+          console.warn(`[PhoneticInspector] FAILED: Evidence for "${seededRule.thai_vowel}" (ID ${seededRule.id}) but no g2p_code - rule stays SEED_`);
+          // #region agent log
+          const sampleSyllables = matchingWordsWithG2P.slice(0, 5).map((w) => {
+            const wordTh = w.word_th || '';
+            const g2pStr = (w.g2p || '').trim();
+            const syllables = g2pStr.split('|').map((s) => s.trim()).filter(Boolean);
+            const m = [...wordTh.matchAll(new RegExp(regex.source, 'g'))][0];
+            const matchIndex = m?.index ?? 0;
+            const sylIdx = thaiCharIndexToSyllableIndex(matchIndex, wordTh.length, syllables.length);
+            const syllable = syllables[sylIdx] ?? '';
+            return { word: wordTh, syllable, extracted: extractVowelPatternFromG2PSyllable(syllable) };
+          });
+          fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'PhoneticInspector.tsx:bestPattern_null', message: 'Evidence but no g2p_code', data: { id: seededRule.id, thai_vowel: seededRule.thai_vowel, matchingWords: matchingWords.length, matchingWithG2P: matchingWordsWithG2P.length, patternCounts: Object.fromEntries(patternCounts), sampleSyllables }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {});
+          // #endregion
         }
       }
 
@@ -964,56 +992,33 @@ export function PhoneticInspector() {
         const rulesToUpdate: Array<{
           id: number;
           g2p_code: string;
+          bestCount: number;
           thai_vowel: string;
           english_vowel: string;
           phonetic_output: string;
           evidence: string;
+          evidenceExamples: Array<{ word_th: string; g2p: string; phonetic_en?: string | null }>;
         }> = [];
         
-        // Also track which g2p_codes are being used for seeded vowels
-        const seededG2pCodes = new Set<string>();
-        
         for (const update of updates) {
-          
           const seededRule = seededRules.find(r => r.id === update.id);
-          if (!seededRule || !seededRule.thai_vowel) {
-            continue;
-          }
-          
-          // Check if this g2p_code is already used by another seeded vowel
-          if (seededG2pCodes.has(update.g2p_code)) {
-            console.warn(`[PhoneticInspector] G2P code "${update.g2p_code}" already mapped to another seeded vowel, skipping ID ${update.id}`);
-            continue;
-          }
-          
-          seededG2pCodes.add(update.g2p_code);
-          
-          // If g2p_code already exists (from previous discovery), we'll update it with the seeded thai_vowel
-          // Otherwise, we'll insert new with the seeded ID
-          const existingRule = existingRules.find(r => r.g2p_code === update.g2p_code);
-          
-          if (existingRule && existingRule.id !== update.id) {
-            // Conflict: this g2p_code exists with a different ID
-            // Delete the old one and create new with seeded ID
-            console.log(`[PhoneticInspector] G2P code "${update.g2p_code}" exists with ID ${existingRule.id}, replacing with seeded ID ${update.id}`);
-            await deletePhoneticG2PRule(update.g2p_code);
-          }
-          
+          if (!seededRule || !seededRule.thai_vowel) continue;
+          const existingRule = existingRules.find(r => r.id === update.id);
           rulesToUpdate.push({
             id: update.id,
             g2p_code: update.g2p_code,
-            thai_vowel: update.thai_vowel || seededRule.thai_vowel, // PRESERVE thai_vowel from seed
-            english_vowel: existingRule?.english_vowel || '', // EMPTY - will be filled by GPT based on thai_vowel
-            phonetic_output: '', // EMPTY - user input field, not parser output
+            bestCount: update.bestCount ?? 0,
+            thai_vowel: update.thai_vowel || seededRule.thai_vowel,
+            english_vowel: existingRule?.english_vowel || G2P_TO_ENGLISH_VOWEL[update.g2p_code] || update.g2p_code,
+            phonetic_output: '',
             evidence: update.evidence || existingRule?.evidence || '',
+            evidenceExamples: update.evidenceExamples || [],
           });
-          
         }
-        
-        // Batch insert/update with explicit IDs - process in order to preserve IDs 1-31
+
+        // Process weakest first so strongest wins conflicts (processed last)
         if (rulesToUpdate.length > 0) {
-          // Sort by ID to process in order (1, 2, 3, ...)
-          rulesToUpdate.sort((a, b) => a.id - b.id);
+          rulesToUpdate.sort((a, b) => a.bestCount - b.bestCount);
           
           console.log(`[PhoneticInspector] Processing ${rulesToUpdate.length} mappings, IDs: ${rulesToUpdate.map(r => r.id).join(', ')}`);
           
@@ -1036,23 +1041,75 @@ export function PhoneticInspector() {
               continue; // Skip - don't try to create it here, let seeding handle it
             }
             
-            // Store the original g2p_code before update (for SEED_ deletion check)
             const originalG2pCode = existingById.g2p_code;
-            
-            // Delete any existing record with this g2p_code (if it has different ID) FIRST
-            // Refresh existingRules to get latest state after previous deletions
+
+            // One g2p_code per vowel: reassign any other row that has this g2p_code
             const { data: freshRules } = await supabase
               .from('phonetic_g2p_rules')
               .select('id, g2p_code');
-            const freshRulesList = freshRules || [];
-            const existingWithG2p = freshRulesList.find(r => r.g2p_code === rule.g2p_code && r.id !== rule.id);
-            
+            const existingWithG2p = (freshRules || []).find((r) => r.g2p_code === rule.g2p_code && r.id !== rule.id);
             if (existingWithG2p) {
-              console.log(`[PhoneticInspector] Deleting existing entry with g2p_code "${rule.g2p_code}" (ID ${existingWithG2p.id}) to replace with seeded ID ${rule.id}`);
-              await deletePhoneticG2PRule(rule.g2p_code);
+              const loserUpdate = updates.find((u) => u.id === existingWithG2p.id);
+              const loserBestCount = loserUpdate?.bestCount ?? 0;
+              // Stronger evidence wins: if loser has more evidence, skip our update (don't reassign)
+              if (loserBestCount > rule.bestCount) {
+                console.log(`[PhoneticInspector] Skipping ID ${rule.id} - ID ${existingWithG2p.id} has stronger evidence (${loserBestCount} > ${rule.bestCount})`);
+                continue;
+              }
+              // Loser has evidence - must get a g2p_code. Use next-best available pattern.
+              const taken = new Set(
+                (freshRules || [])
+                  .filter((r) => r.id !== existingWithG2p.id && !r.g2p_code?.startsWith('SEED_'))
+                  .map((r) => r.g2p_code)
+              );
+              taken.add(rule.g2p_code); // We're taking this one
+              const loserFallback = loserUpdate?.patternCandidates?.find((c) => !taken.has(c.pattern));
+              if (loserFallback) {
+                const fallbackExamples = loserUpdate?.patternExamples?.get(loserFallback.pattern) || [];
+                const fallbackEvidence = JSON.stringify(fallbackExamples.slice(0, 20).map((e) => e.word_th));
+                console.log(`[PhoneticInspector] Reassigning ID ${existingWithG2p.id} from "${rule.g2p_code}" to fallback "${loserFallback.pattern}" (evidence preserved)`);
+                const { THAI_VOWEL_SEEDS } = await import('../data/thaiVowelSeeds');
+                const loserThaiVowel = existingWithG2p.id >= 1 && existingWithG2p.id <= 31
+                  ? THAI_VOWEL_SEEDS[existingWithG2p.id - 1]?.thai_vowel
+                  : loserUpdate?.thai_vowel;
+                await supabase
+                  .from('phonetic_g2p_rules')
+                  .update({
+                    g2p_code: loserFallback.pattern,
+                    thai_vowel: loserThaiVowel,
+                    english_vowel: G2P_TO_ENGLISH_VOWEL[loserFallback.pattern] || loserFallback.pattern,
+                    evidence: fallbackEvidence,
+                    phonetic_output: '',
+                  })
+                  .eq('id', existingWithG2p.id);
+              } else {
+                // Loser has no fallback - use our fallback so both keep a g2p_code
+                const ourUpdate = updates.find((u) => u.id === rule.id);
+                const ourFallback = ourUpdate?.patternCandidates?.find((c) => !taken.has(c.pattern) && c.pattern !== rule.g2p_code);
+                if (ourFallback) {
+                  console.log(`[PhoneticInspector] ID ${existingWithG2p.id} keeps "${rule.g2p_code}"; ID ${rule.id} uses fallback "${ourFallback.pattern}"`);
+                  rule.g2p_code = ourFallback.pattern;
+                  rule.evidence = JSON.stringify((ourUpdate?.patternExamples?.get(ourFallback.pattern) || []).slice(0, 20).map((e) => e.word_th));
+                  rule.evidenceExamples = ourUpdate?.patternExamples?.get(ourFallback.pattern) || [];
+                  rule.english_vowel = G2P_TO_ENGLISH_VOWEL[ourFallback.pattern] || ourFallback.pattern;
+                } else if (loserBestCount > rule.bestCount) {
+                  // No fallback for either; loser has stronger evidence - skip so they keep the code
+                  console.log(`[PhoneticInspector] No fallback for either - ID ${existingWithG2p.id} keeps "${rule.g2p_code}" (stronger evidence), ID ${rule.id} skipped`);
+                  continue;
+                } else {
+                  const conflictSeedCode = `SEED_${String(existingWithG2p.id).padStart(2, '0')}`;
+                  console.warn(`[PhoneticInspector] No fallback for either - reassigning ID ${existingWithG2p.id} to ${conflictSeedCode}`);
+                  // #region agent log
+                  fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'PhoneticInspector.tsx:conflict_no_fallback', message: 'Conflict loser gets SEED_XX', data: { loserId: existingWithG2p.id, winnerId: rule.id, g2p_code: rule.g2p_code, loserInUpdates: !!loserUpdate, patternCandidates: loserUpdate?.patternCandidates ?? null, taken: [...taken] }, timestamp: Date.now(), hypothesisId: 'H2' }) }).catch(() => {});
+                  // #endregion
+                  await supabase
+                    .from('phonetic_g2p_rules')
+                    .update({ g2p_code: conflictSeedCode })
+                    .eq('id', existingWithG2p.id);
+                }
+              }
             }
-            
-            // Now update the existing ID (this preserves ID 1-31)
+
             console.log(`[PhoneticInspector] Updating ID ${rule.id} (current: ${originalG2pCode}) -> ${rule.g2p_code}...`);
             
             // CRITICAL: For seeded vowels (IDs 1-31), always use hardcoded thai_vowel from seed data
@@ -1089,30 +1146,50 @@ export function PhoneticInspector() {
             const isSeedCode = existingG2pCode?.startsWith('SEED_');
             const finalG2pCode = isSeedCode ? rule.g2p_code : (existingG2pCode || rule.g2p_code); // UPDATE if SEED_, preserve if already discovered
             
-            // Preserve existing evidence if it exists (don't overwrite with empty)
-            const existingEvidence = currentRuleForPersistence?.evidence || rule.evidence || null;
-            
-            
-            
+            // Use discovered evidence when we have it; otherwise preserve existing
+            const finalEvidence = rule.evidence || currentRuleForPersistence?.evidence || null;
+            const finalEnglishVowel = existingEnglishVowel || rule.english_vowel || '';
+
             const { error: updateError, data: updateData } = await supabase
               .from('phonetic_g2p_rules')
               .update({
                 g2p_code: finalG2pCode, // UPDATE if SEED_, preserve if already discovered
                 thai_vowel: hardcodedThaiVowel || rule.thai_vowel, // CRITICAL: Always use hardcoded value for IDs 1-31
-                english_vowel: existingEnglishVowel || rule.english_vowel || '', // PRESERVE existing, or use discovered, or empty
+                english_vowel: finalEnglishVowel, // PRESERVE existing, or use discovered
                 phonetic_output: existingPhoneticOutput, // PRESERVE existing user input
-                evidence: existingEvidence, // PRESERVE existing evidence (don't overwrite)
+                evidence: finalEvidence, // Use discovered evidence when available
               })
               .eq('id', rule.id)
               .select();
-            
-            
+
             if (updateError) {
               console.error(`[PhoneticInspector] CRITICAL: Failed to update ID ${rule.id}: ${updateError.message}`);
               // Don't delete SEED_ if update failed - keep the original entry
               console.log(`[PhoneticInspector] Keeping original entry for ID ${rule.id} due to update failure`);
             } else {
               console.log(`[PhoneticInspector] ✓ Successfully updated ID ${rule.id} with g2p_code ${rule.g2p_code}`);
+              // Save evidence words to phonetic_g2p_evidence table for pattern isolation
+              if (rule.evidenceExamples?.length) {
+                try {
+                  const evidenceToSave = rule.evidenceExamples.map((e) => ({
+                    g2p_code: finalG2pCode,
+                    word_id: e.word_th,
+                    text_th: e.word_th,
+                    g2p: e.g2p || null,
+                    parser_phonetic: e.phonetic_en || null,
+                    thai_vowel_label: null,
+                    gpt_phonetic: null,
+                  }));
+                  await savePhoneticG2PEvidenceBatch(evidenceToSave);
+                  console.log(`[PhoneticInspector] Saved ${evidenceToSave.length} evidence records for g2p_code ${finalG2pCode}`);
+                } catch (err) {
+                  const errMsg = err instanceof Error ? err.message : String(err);
+                  console.warn('[PhoneticInspector] Could not save evidence records (table might not exist):', errMsg);
+                  if (errMsg.includes('phonetic_g2p_evidence') || errMsg.includes('PGRST205')) {
+                    console.info('[PhoneticInspector] Run scripts/create-phonetic-g2p-evidence-table-rpc.sql in Supabase SQL Editor, then retry.');
+                  }
+                }
+              }
               // Always try to delete SEED_ entry if the original was a SEED_ code
               // This handles the case where ID 1 had SEED_01 and we updated it to 'aa'
               // The SEED_01 entry should be deleted (though it might already be gone if g2p_code is PK)
@@ -1131,7 +1208,7 @@ export function PhoneticInspector() {
           }
           
           console.log(`[PhoneticInspector] Successfully mapped ${rulesToUpdate.length} Thai vowels to G2P patterns`);
-          
+
           // CRITICAL: Refetch rules to ensure UI shows saved g2p_code
           console.log('[PhoneticInspector] discoverAndMapPatterns: Refetching rules after save...');
           const beforeRefetch = await fetchPhoneticG2PRules();
@@ -1145,16 +1222,30 @@ export function PhoneticInspector() {
           });
           await refetchRules();
           const afterRefetch = await fetchPhoneticG2PRules();
+          const persistedSample = afterRefetch.filter(r => rulesToUpdate.some(u => u.id === r.id)).slice(0, 5).map(r => ({
+            id: r.id,
+            g2p_code: r.g2p_code,
+            english_vowel: r.english_vowel,
+            evidenceLen: r.evidence?.length || 0,
+          }));
+          const refetchMismatches = rulesToUpdate.filter(u => {
+            const refetched = afterRefetch.find(r => r.id === u.id);
+            return refetched && refetched.g2p_code !== u.g2p_code;
+          });
           console.log('[PhoneticInspector] discoverAndMapPatterns: AFTER refetch - persistence verification:', {
             beforeCount: beforeRefetch.length,
             afterCount: afterRefetch.length,
-            sampleLoaded: afterRefetch.filter(r => rulesToUpdate.some(u => u.id === r.id)).slice(0, 3).map(r => ({
-              id: r.id,
-              g2p_code: r.g2p_code,
-              evidence: r.evidence ? JSON.parse(r.evidence).slice(0, 3) : null,
-              evidenceLength: r.evidence?.length || 0
-            }))
+            sampleLoaded: persistedSample,
+            refetchMismatches: refetchMismatches.length ? refetchMismatches.map(u => ({ id: u.id, expected: u.g2p_code, got: afterRefetch.find(r => r.id === u.id)?.g2p_code })) : 'none',
           });
+          // #region agent log
+          const evidenceNoG2p = afterRefetch.filter((r) => r.g2p_code?.startsWith('SEED_') && r.evidence && r.evidence !== '[]');
+          if (evidenceNoG2p.length > 0) {
+            fetch('http://127.0.0.1:7243/ingest/ff5c1228-ebe7-472a-94e0-c5e01b8b7ee3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'PhoneticInspector.tsx:final_state', message: 'Evidence with no g2p_code (SEED_)', data: { ids: evidenceNoG2p.map((r) => r.id), rules: evidenceNoG2p.map((r) => ({ id: r.id, g2p_code: r.g2p_code, evidenceLen: r.evidence?.length })) }, timestamp: Date.now(), hypothesisId: 'H4' }) }).catch(() => {});
+          }
+          // #endregion
+          // Force UI update - setAllRules so table reflects saved data immediately
+          setAllRules(afterRefetch);
         }
       } else {
         console.log('[PhoneticInspector] No patterns mapped (no matches found)');
@@ -1163,7 +1254,7 @@ export function PhoneticInspector() {
       // CRITICAL: Do NOT create additional patterns - only the 31 seeded vowels should exist
       // All discovered patterns should only UPDATE the existing seeded vowels, never create new records
       console.log('[PhoneticInspector] Skipping additional pattern discovery - only 31 seeded vowels allowed');
-      
+
     } catch (err) {
       console.error('[PhoneticInspector] Error in pattern discovery:', err);
       // Don't throw - this is non-critical
