@@ -10,7 +10,11 @@
     "migrate": "tsx scripts/migrate-firebase-to-supabase.ts",
     "migrate:dry-run": "tsx scripts/migrate-firebase-to-supabase.ts --dry-run",
     "build:extension": "vite build --config extension/vite.config.ts",
-    "dev:extension": "vite build --config extension/vite.config.ts --watch"
+    "dev:extension": "vite build --config extension/vite.config.ts --watch",
+    "setup:replace-rpc": "tsx scripts/run-replace-subtitles-rpc.ts",
+    "build:edge-pipeline-preview": "tsx scripts/build-edge-pipeline-preview.ts && tsx scripts/sync-mcp-deploy-run-pipeline-preview-payload.ts",
+    "smoke:pipeline-preview": "tsx scripts/smoke-run-pipeline-preview.ts",
+    "sync:pipeline-preview-edge-secrets": "tsx scripts/sync-pipeline-preview-edge-secrets.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
